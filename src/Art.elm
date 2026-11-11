@@ -1,7 +1,7 @@
 module Art exposing (avatar, brandMark, orbitSketch, smallFlower)
 
-import Html exposing (Html, div)
-import Html.Attributes as HtmlAttr exposing (class, style)
+import Html exposing (Html, div, img)
+import Html.Attributes as HtmlAttr exposing (alt, class, src, style)
 import Svg exposing (circle, path, svg)
 import Svg.Attributes as Attr
 import Types exposing (Worker)
@@ -18,6 +18,17 @@ brandMark =
 
 avatar : Worker -> String -> Html msg
 avatar worker size =
+    case portraitFor worker.name of
+        Just path ->
+            div [ class ("avatar portrait " ++ size), style "background-color" worker.color ]
+                [ img [ src path, alt worker.name, HtmlAttr.attribute "decoding" "async" ] [] ]
+
+        Nothing ->
+            illustratedAvatar worker size
+
+
+illustratedAvatar : Worker -> String -> Html msg
+illustratedAvatar worker size =
     let
         variant =
             modBy 6 worker.avatar
@@ -116,3 +127,25 @@ smallFlower =
         [ path [ Attr.d "M30 28C10 25 7 9 16 6c8-3 13 8 14 16 2-14 12-22 19-16 7 7-2 18-13 22 15-2 25 5 21 14-4 8-18 4-25-5-1 15-10 23-18 17-8-7 1-19 12-23-12 6-24 2-23-7 1-8 14-9 27-4Z", Attr.fill "none", Attr.stroke "currentColor", Attr.strokeWidth "1.5" ] []
         , circle [ Attr.cx "30", Attr.cy "29", Attr.r "3", Attr.fill "currentColor" ] []
         ]
+
+
+portraitFor : String -> Maybe String
+portraitFor nickname =
+    case String.toLower (String.trim nickname) of
+        "merciful" ->
+            Just "/staff/merciful.jpg"
+
+        "md" ->
+            Just "/staff/md.jpg"
+
+        "mascott" ->
+            Just "/staff/mascott.jpg"
+
+        "fundstech" ->
+            Just "/staff/fundstech.jpg"
+
+        "ib china" ->
+            Just "/staff/ib-china.jpg"
+
+        _ ->
+            Nothing

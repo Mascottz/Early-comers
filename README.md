@@ -11,7 +11,7 @@ An offline-ready workplace attendance PWA for iPhone and desktop. The repository
 
 ## What works
 
-- Recognized office QR scanning with a manual code fallback
+- QR-only staff check-in, with no typed office-code fallback to share
 - One check-in per worker per local day, including safe retries
 - Offline check-in, persistent local records, and synchronization after reconnecting
 - Shared daily wall with dates and arrival times
@@ -19,9 +19,12 @@ An offline-ready workplace attendance PWA for iPhone and desktop. The repository
 - Printable and downloadable office QR
 - CSV attendance export
 - Installable iPhone PWA with local fonts and cached application assets
-- Custom illustrations and a responsive organic interface
+- Staff portraits for Merciful, MD, Mascott, FundsTech, and IB China, with custom illustrations for everyone else
+- A responsive organic interface
 
 Admin access cannot be selected in the interface. Production admin status comes only from a verified email in the protected Supabase `admin_emails` table.
+
+The typed office-code fallback has been removed. A printed QR still can be photographed and reused, so this closes the easy code-sharing path rather than proving physical presence; rotating QR or location checks would be needed for stronger verification.
 
 ## Local setup
 
@@ -64,6 +67,8 @@ Do not put a Supabase service role key in the Elm app, browser bridge, repositor
 
 ## Vercel deployment
 
+The production deployment is https://earlycomers.vercel.app/.
+
 The repository includes `vercel.json`, a Python QR function at `api/qr.py`, and build-time browser configuration. Import the GitHub branch into Vercel and set these environment variables:
 
 ```text
@@ -85,7 +90,7 @@ After the first deployment:
 
 The app includes 180, 192, and 512 pixel icons, a maskable icon, standalone display, iPhone metadata, safe area support, local fonts, a service worker, offline navigation, cached QR assets, and persistent offline attendance. Production camera access requires HTTPS.
 
-Passport photographs can be attached to staff profiles later. Use optimized portrait images and cache the signed photo assets for offline display.
+Staff portraits live in `public/staff/` and are mapped by nickname in `src/Art.elm`. The five current portraits are optimized square JPEGs and are precached by the service worker for offline display. Samuel Akeem (ProofsTech) keeps the custom illustration until a portrait is supplied.
 
 ## iPhone installation
 
@@ -95,8 +100,8 @@ Passport photographs can be attached to staff profiles later. Use optimized port
 4. Choose Add to Home Screen.
 5. Open Attendance from the home screen.
 
-After the first connected visit, the interface and saved records work offline. Camera scanning requires permission. The printed manual office code remains available when camera access is denied.
+After the first connected visit, the interface and saved records work offline. Camera scanning requires permission. Staff check-in is QR only; if camera access is denied, allow it in browser settings and scan the printed office QR again.
 
 ## Local configuration
 
-The local office code defaults to `PROOFSTECH-HQ-2026`. Set the `OFFICE_CODE` environment variable to change it. The SQLite database lives in `data/attendance.db` and is intentionally excluded from Git.
+The local office code defaults to `PROOFSTECH-HQ-2026`. Set the `OFFICE_CODE` environment variable to change it. The code is embedded in the office QR and is not shown as a typed check-in fallback. The SQLite database lives in `data/attendance.db` and is intentionally excluded from Git.

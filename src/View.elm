@@ -89,7 +89,7 @@ authView model =
                     , h2 [] [ text "Show up.", br [] [], em [] [ text "Belong." ] ]
                     , p [] [ text "One shared morning for the people who make ProofsTech." ]
                     ]
-                , div [ class "aka-note" ] [ text "IB China, Merciful, FundsTech, Mascott, MD, Samuel" ]
+                , div [ class "aka-note" ] [ text "IB China, Merciful, FundsTech, Mascott, MD, ProofsTech" ]
                 ]
             ]
         , div [ class "auth-footer" ] [ text "Simple attendance, even on no data days." ]
@@ -474,17 +474,12 @@ officeView model =
     div [ class "page office-page" ]
         [ div [ class "office-copy" ]
             [ p [ class "eyebrow" ] [ text "PROOFSTECH HQ, LAGOS" ]
-            , h1 [] [ text "One code.", br [] [], em [] [ text "Every arrival." ] ]
-            , p [ class "office-intro" ] [ text "Print it. Paste it at the office. Let the morning take care of itself." ]
+            , h1 [] [ text "One scan.", br [] [], em [] [ text "Every arrival." ] ]
+            , p [ class "office-intro" ] [ text "Print the office pass. Place it at the entrance. Every arrival starts with the same scan." ]
             , div [ class "office-steps" ]
-                [ div [] [ strong [] [ text "01" ], p [] [ text "Scan the code with the Attendance app." ] ]
+                [ div [] [ strong [] [ text "01" ], p [] [ text "Scan the printed QR with the Attendance app." ] ]
                 , div [] [ strong [] [ text "02" ], p [] [ text "We record the person and their arrival time." ] ]
                 , div [] [ strong [] [ text "03" ], p [] [ text "Their place on the daily wall appears." ] ]
-                ]
-            , div [ class "code-copy" ]
-                [ small [] [ text "MANUAL OFFICE CODE" ]
-                , strong [] [ text model.officeCode ]
-                , button [ class "underlined-action", onClick CopyOfficeCode ] [ text "Copy code" ]
                 ]
             ]
         , div [ class "qr-studio" ]
@@ -496,7 +491,6 @@ officeView model =
             , div [ class "qr-actions" ]
                 [ button [ class "organic-button primary-button compact", onClick PrintQr ] [ text "Print QR" ]
                 , button [ class "text-action", onClick DownloadQr ] [ text "Download" ]
-                , button [ class "text-action", onClick ShareOfficeCode ] [ text "Share code" ]
                 ]
             ]
         ]
@@ -566,8 +560,8 @@ scannerView model =
                     [ div [] [ p [ class "eyebrow" ] [ text "PROOFSTECH HQ" ], h2 [] [ text "Find the office QR." ] ]
                     , button [ class "close-action", onClick CloseScanner ] [ text "Close" ]
                     ]
-                , if model.scanStatus == ScanManual then
-                    manualScanner model
+                , if model.scanStatus == ScanBlocked then
+                    blockedScanner model
 
                   else
                     div [ class "camera-view" ]
@@ -575,8 +569,7 @@ scannerView model =
                             [ div [ id "camera-surface" ] []
                             , div [ class "camera-caption" ] [ text (if model.scanStatus == ScanRequesting then "Waking up the camera…" else "Hold the QR inside this shape") ]
                             ]
-                        , p [ class "privacy-note" ] [ text "The scan happens on your phone. No camera footage is saved." ]
-                        , button [ class "underlined-action", onClick (ScannerMessage "Use manual code") ] [ text "Type the office code instead" ]
+                        , p [ class "privacy-note" ] [ text "Check-in uses the printed office QR only. The scan happens on your phone, and no camera footage is saved." ]
                         ]
                 , div [ class "scanner-offline-note" ]
                     [ span [ class "connection-dot" ] []
@@ -586,21 +579,12 @@ scannerView model =
             ]
 
 
-manualScanner : Model -> Html Msg
-manualScanner model =
-    div [ class "manual-scanner" ]
-        [ p [] [ text "The code is printed just below the QR at your office." ]
-        , if model.scanMessage /= "" then
-            p [ class "form-error" ] [ text model.scanMessage ]
-
-          else
-            text ""
-        , Html.form [ onSubmitForm SubmitManualCode ]
-            [ label [ for "office-code" ] [ text "OFFICE CODE" ]
-            , input [ id "office-code", value model.manualCode, onInput SetManualCode, placeholder "PROOFSTECH-HQ-2026", autocomplete False, autofocus True ] []
-            , button [ class "organic-button primary-button compact", type_ "submit" ] [ text "Record my arrival ", span [ class "arrow-mark" ] [] ]
-            ]
-        , button [ class "underlined-action", onClick OpenScanner ] [ text "Try the camera again" ]
+blockedScanner : Model -> Html Msg
+blockedScanner model =
+    div [ class "scanner-blocked" ]
+        [ p [ class "form-error" ] [ text model.scanMessage ]
+        , p [ class "privacy-note" ] [ text "Staff check-in is QR only, so there is no typed code to share." ]
+        , button [ class "organic-button primary-button compact", onClick OpenScanner ] [ text "Try the camera again " ]
         ]
 
 

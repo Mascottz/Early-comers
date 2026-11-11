@@ -22,7 +22,7 @@ type ScanStatus
     = ScanClosed
     | ScanRequesting
     | ScanActive
-    | ScanManual
+    | ScanBlocked
 
 
 type AuthStatus
@@ -104,7 +104,6 @@ type alias Model =
     , officeCode : String
     , scanStatus : ScanStatus
     , scanMessage : String
-    , manualCode : String
     , toast : Maybe Toast
     , showInstall : Bool
     , showAddWorker : Bool
@@ -142,8 +141,6 @@ type Msg
     | CloseScanner
     | ScannerMessage String
     | ScanDecoded String
-    | SetManualCode String
-    | SubmitManualCode
     | OnlineChanged Bool
     | SetAuthEmail String
     | SendMagicLink
@@ -167,8 +164,6 @@ type Msg
     | SetNewWorkerNickname String
     | SubmitWorker
     | WorkerCreated (Result Http.Error Worker)
-    | CopyOfficeCode
-    | ShareOfficeCode
     | DownloadQr
     | PrintQr
     | ExportRecords

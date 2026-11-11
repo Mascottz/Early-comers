@@ -1,8 +1,10 @@
-const CACHE = 'attendance-v2'
+const CACHE = 'attendance-v3'
 const CORE = [
   '/', '/index.html', '/styles.css', '/app.js', '/browser.js',
   '/manifest.webmanifest', '/runtime-config.js', '/favicon.svg', '/apple-touch-icon.png',
   '/pwa-192.png', '/pwa-512.png', '/offline.html', '/api/qr.svg',
+  '/staff/merciful.jpg', '/staff/md.jpg', '/staff/mascott.jpg',
+  '/staff/fundstech.jpg', '/staff/ib-china.jpg',
   '/vendor/html5-qrcode.min.js',
   '/fonts/bricolage-grotesque-latin-600-normal.woff2',
   '/fonts/bricolage-grotesque-latin-700-normal.woff2',
