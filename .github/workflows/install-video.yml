@@ -1,0 +1,73 @@
+name: Install video
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'video/**'
+      - '.github/workflows/install-video.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: install-video
+  cancel-in-progress: true
+
+jobs:
+  render:
+    name: Render MP4
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: video/package-lock.json
+
+      - name: Install dependencies
+        working-directory: video
+        run: npm ci
+
+      - name: Typecheck
+        working-directory: video
+        run: npm run typecheck
+
+      - name: Install headless Chrome
+        working-directory: video
+        run: npx remotion browser ensure
+
+      - name: Render video
+        working-directory: video
+        run: npm run render
+
+      - name: Show output
+        working-directory: video
+        run: ls -lh out/attendance-install.mp4
+
+      - name: Upload MP4 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: attendance-install-video
+          path: video/out/attendance-install.mp4
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Publish permanent download
+        if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: install-video-latest
+          name: Attendance install video (latest)
+          body: |
+            Explain how to install Attendance by ProofsTech on iPhone and Android.
+
+            Download `attendance-install.mp4` below. Rendered automatically from `video/` (Remotion) by the **Install video** workflow.
+          files: video/out/attendance-install.mp4
+          fail_on_unmatched_files: true

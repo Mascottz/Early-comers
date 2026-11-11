@@ -134,6 +134,21 @@ Staff portraits live in `public/staff/` and are mapped by nickname in `src/Art.e
 
 After the first connected visit, the interface and saved records work offline. Camera scanning requires permission. Staff check-in is QR only; if camera access is denied, allow it in browser settings and scan the printed office QR again.
 
+## Install video
+
+`video/` is a [Remotion](https://remotion.dev) project that renders a 35-second 3D explainer showing how to install the app on iPhone (Safari → Share → Add to Home Screen) and Android (Chrome → ⋮ → Add to Home screen).
+
+```bash
+cd video
+npm install
+npm run studio   # live preview
+npm run render   # out/attendance-install.mp4
+```
+
+The **Install video** workflow (`.github/workflows/install-video.yml`) renders the MP4 on every push to `main` that touches `video/`, and on manual dispatch. Each run uploads the file as the `attendance-install-video` artifact (kept 90 days) and refreshes the permanent download at [`releases/tag/install-video-latest`](https://github.com/Mascottz/Early-comers/releases/tag/install-video-latest).
+
+Brand fonts are vendored in `video/public/fonts/` with their SIL Open Font License files, so the render needs no network access.
+
 ## Lateness and fines
 
 The grace period ends at **09:30** local time. A check-in at 09:30 is on time; 09:31 onward is late.
