@@ -27,9 +27,9 @@ type ScanStatus
 
 type AuthStatus
     = SignedOut
-    | SendingLink
-    | LinkSent
+    | SigningIn
     | RestoringSession
+    | NeedsPin
     | Authenticated
 
 
@@ -121,7 +121,13 @@ type alias Model =
     , session : Maybe Session
     , authStatus : AuthStatus
     , authEmail : String
+    , authPassword : String
+    , authPin : String
     , authMessage : String
+    , setupPin : String
+    , setupPinConfirm : String
+    , setupMessage : String
+    , savingPin : Bool
     , refreshing : Bool
     , appOrigin : String
     , showInviteLink : Bool
@@ -152,9 +158,16 @@ type Msg
     | ScanDecoded String
     | OnlineChanged Bool
     | SetAuthEmail String
-    | SendMagicLink
-    | MagicLinkResult (Result Http.Error ())
+    | SetAuthPassword String
+    | SetAuthPin String
+    | SignIn
+    | SignInResult (Result Http.Error String)
     | AuthUserReceived (Result Http.Error AuthUser)
+    | PinStatusReceived (Result Http.Error Bool)
+    | SetSetupPin String
+    | SetSetupPinConfirm String
+    | SavePin
+    | SavePinResult (Result Http.Error Bool)
     | SessionRefreshed (Result Http.Error Session)
     | GotCloudWorkers (Result Http.Error (List Worker))
     | GotCloudEntries (Result Http.Error (List Entry))

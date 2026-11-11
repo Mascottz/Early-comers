@@ -35,20 +35,47 @@ sessionDecoder =
         (Decode.at [ "user", "email" ] Decode.string)
 
 
-sendMagicLink : SupabaseConfig -> String -> String -> Cmd Msg
-sendMagicLink config email redirectTo =
+pinSignIn : SupabaseConfig -> String -> String -> String -> String -> Cmd Msg
+pinSignIn config email password pin redirectTo =
     Http.request
         { method = "POST"
         , headers = [ Http.header "apikey" config.key ]
-        , url = config.url ++ "/auth/v1/otp"
+        , url = config.url ++ "/functions/v1/pin-auth"
         , body =
             Http.jsonBody <|
                 Encode.object
                     [ ( "email", Encode.string email )
-                    , ( "create_user", Encode.bool False )
-                    , ( "options", Encode.object [ ( "email_redirect_to", Encode.string redirectTo ) ] )
+                    , ( "password", Encode.string password )
+                    , ( "pin", Encode.string pin )
+                    , ( "redirect_to", Encode.string redirectTo )
                     ]
-        , expect = Http.expectWhatever MagicLinkResult
+        , expect = Http.expectJson SignInResult (Decode.field "invite_link" Decode.string)
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
+pinStatus : SupabaseConfig -> Session -> Cmd Msg
+pinStatus config session =
+    Http.request
+        { method = "POST"
+        , headers = authHeaders config session
+        , url = config.url ++ "/rest/v1/rpc/my_pin_status"
+        , body = Http.jsonBody (Encode.object [])
+        , expect = Http.expectJson PinStatusReceived Decode.bool
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
+setPin : SupabaseConfig -> Session -> String -> Cmd Msg
+setPin config session pin =
+    Http.request
+        { method = "POST"
+        , headers = authHeaders config session
+        , url = config.url ++ "/rest/v1/rpc/set_my_pin"
+        , body = Http.jsonBody (Encode.object [ ( "p_pin", Encode.string pin ) ])
+        , expect = Http.expectJson SavePinResult Decode.bool
         , timeout = Nothing
         , tracker = Nothing
         }

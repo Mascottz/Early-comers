@@ -15,11 +15,11 @@ view model =
         ( Just _, SignedOut ) ->
             authView model
 
-        ( Just _, SendingLink ) ->
+        ( Just _, SigningIn ) ->
             authView model
 
-        ( Just _, LinkSent ) ->
-            authView model
+        ( Just _, NeedsPin ) ->
+            pinSetupView model
 
         ( Just _, RestoringSession ) ->
             authLoading
@@ -47,51 +47,177 @@ authLoading =
         ]
 
 
+authTop : Html Msg
+authTop =
+    div [ class "auth-top" ]
+        [ div [ class "auth-brand" ] [ brandMark, strong [] [ text "attendance" ], small [] [ text "by ProofsTech" ] ]
+        , span [] [ text "LAGOS, NIGERIA" ]
+        ]
+
+
+authArt : Html Msg
+authArt =
+    div [ class "auth-art" ]
+        [ orbitSketch
+        , div [ class "auth-blob" ]
+            [ smallFlower
+            , h2 [] [ text "Show up.", br [] [], em [] [ text "Belong." ] ]
+            , p [] [ text "One shared morning for the people who make ProofsTech." ]
+            ]
+        , div [ class "aka-note" ] [ text "IB China, Merciful, FundsTech, Mascott, MD, ProofsTech" ]
+        ]
+
+
 authView : Model -> Html Msg
 authView model =
     div [ class "auth-page" ]
-        [ div [ class "auth-top" ]
-            [ div [ class "auth-brand" ] [ brandMark, strong [] [ text "attendance" ], small [] [ text "by ProofsTech" ] ]
-            , span [] [ text "LAGOS, NIGERIA" ]
-            ]
+        [ authTop
         , div [ class "auth-layout" ]
             [ div [ class "auth-copy" ]
                 [ p [ class "eyebrow" ] [ text "YOUR PLACE ON THE TEAM" ]
                 , h1 [] [ text "Your workday", br [] [], text "starts with ", em [] [ text "you." ] ]
-                , p [ class "auth-intro" ] [ text "Use the Gmail address invited by ProofsTech to request a private sign-in link." ]
-                , if model.authStatus == LinkSent then
-                    div [ class "link-sent" ]
-                        [ smallFlower
-                        , h2 [] [ text "Check your inbox." ]
-                        , p [] [ text ("We sent your sign-in link to " ++ String.trim model.authEmail ++ ". Open it on this device and you’ll come right back here.") ]
-                        , button [ class "underlined-action", onClick (SendMagicLink) ] [ text "Send the link again" ]
+                , p [ class "auth-intro" ] [ text "Sign in with the Gmail address on your staff profile, the ProofsTech team password, and your own six-digit PIN." ]
+                , Html.form [ class "auth-form", onSubmitForm SignIn ]
+                    [ label [ for "staff-email" ] [ text "APPROVED EMAIL" ]
+                    , input
+                        [ id "staff-email"
+                        , type_ "email"
+                        , value model.authEmail
+                        , onInput SetAuthEmail
+                        , placeholder "you@gmail.com"
+                        , attribute "autocomplete" "email"
+                        , attribute "inputmode" "email"
+                        , autofocus (model.authStatus == SignedOut)
                         ]
-
-                  else
-                    Html.form [ class "auth-form", onSubmitForm SendMagicLink ]
-                        [ label [ for "staff-email" ] [ text "YOUR INVITED EMAIL" ]
-                        , input [ id "staff-email", type_ "email", value model.authEmail, onInput SetAuthEmail, placeholder "you@gmail.com", autocomplete True, autofocus True ] []
-                        , if model.authMessage /= "" then
-                            p [ class "form-error" ] [ text model.authMessage ]
-
-                          else
-                            text ""
-                        , button [ class "organic-button primary-button compact", type_ "submit" ]
-                            [ text (if model.authStatus == SendingLink then "Sending your link…" else "Send my sign-in link ")
-                            , span [ class "arrow-mark" ] []
-                            ]
+                        []
+                    , label [ for "staff-password" ] [ text "TEAM PASSWORD" ]
+                    , input
+                        [ id "staff-password"
+                        , type_ "password"
+                        , value model.authPassword
+                        , onInput SetAuthPassword
+                        , placeholder "Shared by ProofsTech"
+                        , attribute "autocomplete" "current-password"
                         ]
-                , p [ class "auth-privacy" ] [ text "Only invited staff can enter. Admin access comes from your verified email, never a setting on your phone." ]
-                ]
-            , div [ class "auth-art" ]
-                [ orbitSketch
-                , div [ class "auth-blob" ]
-                    [ smallFlower
-                    , h2 [] [ text "Show up.", br [] [], em [] [ text "Belong." ] ]
-                    , p [] [ text "One shared morning for the people who make ProofsTech." ]
+                        []
+                    , label [ for "staff-pin" ] [ text "YOUR SIX-DIGIT PIN" ]
+                    , input
+                        [ id "staff-pin"
+                        , type_ "password"
+                        , value model.authPin
+                        , onInput SetAuthPin
+                        , placeholder "••••••"
+                        , attribute "inputmode" "numeric"
+                        , attribute "maxlength" "6"
+                        , attribute "pattern" "[0-9]{6}"
+                        , attribute "autocomplete" "off"
+                        ]
+                        []
+                    , if model.authMessage /= "" then
+                        p [ class "form-error" ] [ text model.authMessage ]
+
+                      else
+                        text ""
+                    , button
+                        [ class "organic-button primary-button compact"
+                        , type_ "submit"
+                        , disabled (model.authStatus == SigningIn)
+                        ]
+                        [ text
+                            (if model.authStatus == SigningIn then
+                                "Opening your session…"
+
+                             else
+                                "Sign in "
+                            )
+                        , span [ class "arrow-mark" ] []
+                        ]
                     ]
-                , div [ class "aka-note" ] [ text "IB China, Merciful, FundsTech, Mascott, MD, ProofsTech" ]
+                , p [ class "auth-firsttime" ] [ text "First time here? Open the private first-time link an admin prepared for you. It signs you in, then you choose your PIN." ]
+                , p [ class "auth-privacy" ] [ text "Only approved staff emails can sign in. Admin access comes from your verified email, never a setting on your phone." ]
                 ]
+            , authArt
+            ]
+        , div [ class "auth-footer" ] [ text "Simple attendance, even on no data days." ]
+        ]
+
+
+pinSetupView : Model -> Html Msg
+pinSetupView model =
+    let
+        email =
+            model.session
+                |> Maybe.map .email
+                |> Maybe.withDefault ""
+    in
+    div [ class "auth-page" ]
+        [ authTop
+        , div [ class "auth-layout" ]
+            [ div [ class "auth-copy" ]
+                [ p [ class "eyebrow" ] [ text "ONE LAST STEP" ]
+                , h1 [] [ text "Choose your", br [] [], text "six-digit ", em [] [ text "PIN." ] ]
+                , p [ class "auth-intro" ]
+                    [ text
+                        (if email == "" then
+                            "You are signed in. Set a PIN only you know."
+
+                         else
+                            "You are signed in as " ++ email ++ ". Set a PIN only you know."
+                        )
+                    ]
+                , Html.form [ class "auth-form", onSubmitForm SavePin ]
+                    [ label [ for "setup-pin" ] [ text "NEW PIN" ]
+                    , input
+                        [ id "setup-pin"
+                        , type_ "password"
+                        , value model.setupPin
+                        , onInput SetSetupPin
+                        , placeholder "••••••"
+                        , attribute "inputmode" "numeric"
+                        , attribute "maxlength" "6"
+                        , attribute "pattern" "[0-9]{6}"
+                        , attribute "autocomplete" "new-password"
+                        , autofocus True
+                        ]
+                        []
+                    , label [ for "setup-pin-confirm" ] [ text "CONFIRM PIN" ]
+                    , input
+                        [ id "setup-pin-confirm"
+                        , type_ "password"
+                        , value model.setupPinConfirm
+                        , onInput SetSetupPinConfirm
+                        , placeholder "••••••"
+                        , attribute "inputmode" "numeric"
+                        , attribute "maxlength" "6"
+                        , attribute "pattern" "[0-9]{6}"
+                        , attribute "autocomplete" "new-password"
+                        ]
+                        []
+                    , if model.setupMessage /= "" then
+                        p [ class "form-error" ] [ text model.setupMessage ]
+
+                      else
+                        text ""
+                    , button
+                        [ class "organic-button primary-button compact"
+                        , type_ "submit"
+                        , disabled (model.savingPin || String.length model.setupPin /= 6 || String.length model.setupPinConfirm /= 6)
+                        ]
+                        [ text
+                            (if model.savingPin then
+                                "Saving your PIN…"
+
+                             else
+                                "Save my PIN "
+                            )
+                        , span [ class "arrow-mark" ] []
+                        ]
+                    ]
+                , p [ class "auth-firsttime" ] [ text "From now on, your email, the team password, and this PIN open your workspace." ]
+                , button [ class "underlined-action", onClick SignOut ] [ text "Sign in as someone else" ]
+                , p [ class "auth-privacy" ] [ text "Never share your PIN. After this step it is the only thing that proves the sign-in is really you." ]
+                ]
+            , authArt
             ]
         , div [ class "auth-footer" ] [ text "Simple attendance, even on no data days." ]
         ]

@@ -117,6 +117,14 @@ app.ports.exportCsv.subscribe(csv => {
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 })
 
+app.ports.openLink.subscribe(url => {
+  try {
+    const target = new URL(url, window.location.origin)
+    if (target.origin !== window.location.origin) return
+    window.location.assign(target.href)
+  } catch (_) {}
+})
+
 app.ports.copyInviteLink.subscribe(async text => {
   try {
     await navigator.clipboard.writeText(text)

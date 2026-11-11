@@ -4,6 +4,7 @@ import Api
 import Browser
 import Date
 import Demo
+import Http
 import Storage
 import Supabase
 import Task
@@ -37,6 +38,9 @@ port exportCsv : String -> Cmd msg
 
 
 port copyInviteLink : String -> Cmd msg
+
+
+port openLink : String -> Cmd msg
 
 
 port scanDecoded : (String -> msg) -> Sub msg
@@ -112,7 +116,13 @@ init flags =
                     ( True, Just _ ) ->
                         RestoringSession
             , authEmail = ""
+            , authPassword = ""
+            , authPin = ""
             , authMessage = ""
+            , setupPin = ""
+            , setupPinConfirm = ""
+            , setupMessage = ""
+            , savingPin = False
             , refreshing = False
             , appOrigin = flags.origin
             , showInviteLink = False
@@ -139,7 +149,7 @@ init flags =
                             Supabase.refreshSession cloud session (flags.now // 1000)
 
                         else
-                            Cmd.batch [ Supabase.fetchUser cloud session, cloudFetch model ]
+                            Supabase.fetchUser cloud session
 
                     else
                         Cmd.none
@@ -257,66 +267,169 @@ updateCore msg model =
         SetAuthEmail value ->
             ( { model | authEmail = value, authMessage = "" }, Cmd.none )
 
-        SendMagicLink ->
+        SetAuthPassword value ->
+            ( { model | authPassword = value, authMessage = "" }, Cmd.none )
+
+        SetAuthPin value ->
+            ( { model | authPin = onlyDigits 6 value, authMessage = "" }, Cmd.none )
+
+        SignIn ->
             case model.supabase of
                 Nothing ->
                     ( model, Cmd.none )
 
                 Just cloud ->
+                    let
+                        email =
+                            String.toLower (String.trim model.authEmail)
+                    in
                     if not model.online then
-                        ( { model | authMessage = "Reconnect once to receive your sign-in link." }, Cmd.none )
+                        ( { model | authMessage = "Reconnect to sign in. This page needs the office server once." }, Cmd.none )
 
-                    else if String.contains "@" model.authEmail && String.contains "." model.authEmail then
-                        ( { model | authStatus = SendingLink, authMessage = "" }
-                        , Supabase.sendMagicLink cloud (String.toLower (String.trim model.authEmail)) model.appOrigin
-                        )
+                    else if not (String.contains "@" email && String.contains "." email) then
+                        ( { model | authMessage = "Enter the approved Gmail address on your staff profile." }, Cmd.none )
+
+                    else if String.length model.authPassword < 6 then
+                        ( { model | authMessage = "Enter the team password ProofsTech shared with you." }, Cmd.none )
+
+                    else if String.length model.authPin /= 6 then
+                        ( { model | authMessage = "Your PIN is exactly six digits." }, Cmd.none )
 
                     else
-                        ( { model | authMessage = "Enter your invited email address." }, Cmd.none )
+                        ( { model | authStatus = SigningIn, authMessage = "" }
+                        , Supabase.pinSignIn cloud email model.authPassword model.authPin model.appOrigin
+                        )
 
-        MagicLinkResult result ->
+        SignInResult result ->
             case result of
-                Ok _ ->
-                    ( { model | authStatus = LinkSent, authMessage = "Your private sign-in link is on its way." }, Cmd.none )
+                Ok link ->
+                    ( { model | authMessage = "" }, openLink link )
 
-                Err _ ->
-                    ( { model | authStatus = SignedOut, authMessage = "We could not sign in this email. Use the Gmail address invited by ProofsTech." }, Cmd.none )
+                Err error ->
+                    ( { model
+                        | authStatus = SignedOut
+                        , authPassword = ""
+                        , authPin = ""
+                        , authMessage = signInMessage error
+                      }
+                    , Cmd.none
+                    )
 
         AuthUserReceived result ->
-            case ( result, model.session ) of
-                ( Ok user, Just session ) ->
+            case ( result, model.session, model.supabase ) of
+                ( Ok user, Just session, Just cloud ) ->
                     let
                         updatedSession =
                             { session | userId = user.id, email = String.toLower user.email }
 
                         updated =
-                            { model | session = Just updatedSession, currentWorkerId = user.id, authStatus = Authenticated, refreshing = False }
+                            { model | session = Just updatedSession, currentWorkerId = user.id, refreshing = False }
                     in
-                    ( updated, Cmd.batch [ saveSession (Supabase.encodeSession updatedSession), cloudFetch updated ] )
+                    ( updated
+                    , Cmd.batch
+                        [ saveSession (Supabase.encodeSession updatedSession)
+                        , Supabase.pinStatus cloud updatedSession
+                        ]
+                    )
 
-                ( Err _, Just session ) ->
-                    case model.supabase of
-                        Just cloud ->
-                            if model.online then
-                                ( { model | refreshing = True }, Supabase.refreshSession cloud session (Time.posixToMillis model.now // 1000) )
+                ( Err _, Just session, Just cloud ) ->
+                    if model.online then
+                        ( { model | refreshing = True }, Supabase.refreshSession cloud session (Time.posixToMillis model.now // 1000) )
 
-                            else
-                                ( { model | authStatus = Authenticated }, Cmd.none )
-
-                        Nothing ->
-                            ( model, Cmd.none )
+                    else
+                        ( { model | authStatus = Authenticated }, Cmd.none )
 
                 _ ->
                     ( model, Cmd.none )
 
-        SessionRefreshed result ->
+        PinStatusReceived result ->
             case ( result, model.supabase ) of
-                ( Ok session, Just _ ) ->
+                ( Ok True, Just _ ) ->
                     let
                         updated =
-                            { model | session = Just session, currentWorkerId = session.userId, authStatus = Authenticated, refreshing = False }
+                            { model | authStatus = Authenticated, setupMessage = "", savingPin = False }
                     in
-                    ( updated, Cmd.batch [ saveSession (Supabase.encodeSession session), cloudFetch updated ] )
+                    ( updated, cloudFetch updated )
+
+                ( Ok False, Just _ ) ->
+                    ( { model | authStatus = NeedsPin, setupPin = "", setupPinConfirm = "", setupMessage = "" }, Cmd.none )
+
+                ( Err _, Just _ ) ->
+                    let
+                        updated =
+                            { model | authStatus = Authenticated }
+                    in
+                    ( updated, cloudFetch updated )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        SetSetupPin value ->
+            ( { model | setupPin = onlyDigits 6 value, setupMessage = "" }, Cmd.none )
+
+        SetSetupPinConfirm value ->
+            ( { model | setupPinConfirm = onlyDigits 6 value, setupMessage = "" }, Cmd.none )
+
+        SavePin ->
+            case ( model.supabase, model.session ) of
+                ( Just cloud, Just session ) ->
+                    if String.length model.setupPin /= 6 then
+                        ( { model | setupMessage = "Choose exactly six digits." }, Cmd.none )
+
+                    else if model.setupPin /= model.setupPinConfirm then
+                        ( { model | setupMessage = "The two PINs do not match." }, Cmd.none )
+
+                    else
+                        ( { model | savingPin = True, setupMessage = "" }
+                        , Supabase.setPin cloud session model.setupPin
+                        )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        SavePinResult result ->
+            case result of
+                Ok True ->
+                    let
+                        updated =
+                            { model
+                                | authStatus = Authenticated
+                                , savingPin = False
+                                , setupPin = ""
+                                , setupPinConfirm = ""
+                                , setupMessage = ""
+                                , toast = Just (Toast "PIN saved" "Use your email, the team password, and this PIN next time.")
+                            }
+                    in
+                    ( updated, cloudFetch updated )
+
+                _ ->
+                    ( { model
+                        | savingPin = False
+                        , setupMessage = "That PIN was not saved. Use exactly six digits, then try again."
+                      }
+                    , Cmd.none
+                    )
+
+        SessionRefreshed result ->
+            case ( result, model.supabase ) of
+                ( Ok session, Just cloud ) ->
+                    let
+                        updated =
+                            { model | session = Just session, currentWorkerId = session.userId, refreshing = False }
+                    in
+                    if model.authStatus == Authenticated then
+                        ( { updated | authStatus = Authenticated }
+                        , Cmd.batch [ saveSession (Supabase.encodeSession session), cloudFetch updated ]
+                        )
+
+                    else
+                        ( updated
+                        , Cmd.batch
+                            [ saveSession (Supabase.encodeSession session)
+                            , Supabase.pinStatus cloud session
+                            ]
+                        )
 
                 ( Err _, Just _ ) ->
                     signOut model
@@ -381,7 +494,7 @@ updateCore msg model =
 
         OnlineChanged online ->
             ( { model | online = online }
-            , if online then
+            , if online && model.authStatus == Authenticated then
                 case model.supabase of
                     Just _ ->
                         Cmd.batch (cloudFetch model :: List.map (cloudCheckIn model) (pendingEntries model))
@@ -685,7 +798,14 @@ signOut model =
     ( { model
         | session = Nothing
         , authStatus = SignedOut
+        , authEmail = ""
+        , authPassword = ""
+        , authPin = ""
         , authMessage = ""
+        , setupPin = ""
+        , setupPinConfirm = ""
+        , setupMessage = ""
+        , savingPin = False
         , currentWorkerId = ""
         , workers = []
         , entries = []
@@ -698,6 +818,44 @@ signOut model =
       }
     , clearSession ()
     )
+
+
+onlyDigits : Int -> String -> String
+onlyDigits limit value =
+    value
+        |> String.filter (\character -> character >= '0' && character <= '9')
+        |> String.left limit
+
+
+signInMessage : Http.Error -> String
+signInMessage error =
+    case error of
+        Http.BadStatus 400 ->
+            "Enter your approved email, the team password, and your six-digit PIN."
+
+        Http.BadStatus 401 ->
+            "Email, team password, or PIN is incorrect."
+
+        Http.BadStatus 403 ->
+            "That email is not approved for ProofsTech attendance."
+
+        Http.BadStatus 409 ->
+            "No PIN is set for this email yet. Open the private first-time link an admin prepared, choose your PIN, then sign in here."
+
+        Http.BadStatus 429 ->
+            "Too many attempts. Wait 15 minutes, then try again."
+
+        Http.BadStatus _ ->
+            "We could not start your session. Try again in a moment."
+
+        Http.NetworkError ->
+            "Reconnect, then try again."
+
+        Http.Timeout ->
+            "Sign-in took too long. Try again."
+
+        _ ->
+            "Sign-in is unavailable right now. Try again in a moment."
 
 
 validOfficeCode : Model -> String -> Bool
