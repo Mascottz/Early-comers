@@ -7,8 +7,60 @@ const cors = {
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { ...cors, 'Content-Type': 'application/json' },
+    headers: {
+      ...cors,
+      'Content-Type': 'application/json',
+      'Cache-Control': 'no-store, max-age=0',
+      Pragma: 'no-cache',
+    },
   })
+}
+
+function siteOrigin(value: unknown) {
+  try {
+    const url = new URL(String(value || 'https://earlycomers.vercel.app'))
+    const local = url.hostname === 'localhost' || url.hostname === '127.0.0.1'
+    if (url.origin === 'https://earlycomers.vercel.app' || local) return url.origin
+  } catch (_) {}
+  return 'https://earlycomers.vercel.app'
+}
+
+async function profileBy(
+  base: string,
+  serviceHeaders: Record<string, string>,
+  query: string,
+) {
+  const response = await fetch(
+    `${base}/rest/v1/staff_profiles?${query}&select=id,nickname,title,initials,color,avatar,active`,
+    { headers: serviceHeaders },
+  )
+  if (!response.ok) return null
+  const profiles = await response.json()
+  return Array.isArray(profiles) && profiles.length > 0 ? profiles[0] : null
+}
+
+async function prepareLink(
+  base: string,
+  serviceHeaders: Record<string, string>,
+  email: string,
+  site: string,
+) {
+  const response = await fetch(`${base}/auth/v1/admin/generate_link`, {
+    method: 'POST',
+    headers: serviceHeaders,
+    body: JSON.stringify({
+      type: 'magiclink',
+      email,
+      redirect_to: site,
+    }),
+  })
+  const data = await response.json()
+  if (!response.ok || !data.hashed_token) {
+    throw new Error('Could not generate the private invite link')
+  }
+
+  const tokenType = String(data.verification_type || 'magiclink')
+  return `${site}/invite?token=${encodeURIComponent(data.hashed_token)}&type=${encodeURIComponent(tokenType)}`
 }
 
 Deno.serve(async (request) => {
@@ -40,6 +92,31 @@ Deno.serve(async (request) => {
   }
 
   const input = await request.json()
+  const site = siteOrigin(input.redirect_to)
+
+  if (input.action === 'link') {
+    const workerId = String(input.worker_id || '').trim()
+    if (!workerId) return json({ error: 'Choose a staff member' }, 400)
+
+    const profile = await profileBy(base, serviceHeaders, `id=eq.${encodeURIComponent(workerId)}`)
+    if (!profile) return json({ error: 'Staff member not found' }, 404)
+
+    const emailResponse = await fetch(
+      `${base}/rest/v1/staff_profiles?id=eq.${encodeURIComponent(workerId)}&select=email`,
+      { headers: serviceHeaders },
+    )
+    const emails = await emailResponse.json()
+    const email = Array.isArray(emails) && emails.length > 0 ? emails[0].email : ''
+    if (!email) return json({ error: 'Staff email not found' }, 404)
+
+    try {
+      const inviteLink = await prepareLink(base, serviceHeaders, email, site)
+      return json({ ...profile, invite_link: inviteLink })
+    } catch (_) {
+      return json({ error: 'Could not prepare the invite link' }, 502)
+    }
+  }
+
   const email = String(input.email || '').trim().toLowerCase()
   const fullName = String(input.full_name || '').trim()
   const nickname = String(input.nickname || '').trim()
@@ -59,7 +136,7 @@ Deno.serve(async (request) => {
     headers: serviceHeaders,
   })
   const userData = await usersResponse.json()
-  const exists = (userData.users || []).some((item) => item.email?.toLowerCase() === email)
+  const exists = (userData.users || []).some((item: { email?: string }) => item.email?.toLowerCase() === email)
 
   if (!exists) {
     const createResponse = await fetch(`${base}/auth/v1/admin/users`, {
@@ -70,10 +147,17 @@ Deno.serve(async (request) => {
     if (!createResponse.ok) return json(await createResponse.json(), 400)
   }
 
-  const profileResponse = await fetch(
-    `${base}/rest/v1/staff_profiles?email=eq.${encodeURIComponent(email)}&select=id,nickname,title,initials,color,avatar,active`,
-    { headers: serviceHeaders },
-  )
-  const profiles = await profileResponse.json()
-  return json(profiles[0] || null)
+  let profile = null
+  for (let attempt = 0; attempt < 5 && !profile; attempt += 1) {
+    profile = await profileBy(base, serviceHeaders, `email=eq.${encodeURIComponent(email)}`)
+    if (!profile) await new Promise((resolve) => setTimeout(resolve, 180))
+  }
+  if (!profile) return json({ error: 'Staff profile not ready' }, 500)
+
+  let inviteLink = ''
+  try {
+    inviteLink = await prepareLink(base, serviceHeaders, email, site)
+  } catch (_) {}
+
+  return json({ ...profile, invite_link: inviteLink })
 })

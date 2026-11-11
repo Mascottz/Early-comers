@@ -1,8 +1,8 @@
-const CACHE = 'attendance-v3'
+const CACHE = 'attendance-v4'
 const CORE = [
   '/', '/index.html', '/styles.css', '/app.js', '/browser.js',
   '/manifest.webmanifest', '/runtime-config.js', '/favicon.svg', '/apple-touch-icon.png',
-  '/pwa-192.png', '/pwa-512.png', '/offline.html', '/api/qr.svg',
+  '/pwa-192.png', '/pwa-512.png', '/offline.html', '/invite.html', '/api/qr.svg',
   '/staff/merciful.jpg', '/staff/md.jpg', '/staff/mascott.jpg',
   '/staff/fundstech.jpg', '/staff/ib-china.jpg',
   '/vendor/html5-qrcode.min.js',
@@ -29,14 +29,21 @@ self.addEventListener('fetch', event => {
   const request = event.request
   if (request.method !== 'GET') return
   if (request.mode === 'navigate') {
+    const path = new URL(request.url).pathname
+    const isInvite = path === '/invite' || path === '/invite.html'
     event.respondWith(
       fetch(request)
         .then(response => {
-          const copy = response.clone()
-          caches.open(CACHE).then(cache => cache.put('/index.html', copy))
+          if (!isInvite) {
+            const copy = response.clone()
+            caches.open(CACHE).then(cache => cache.put('/index.html', copy))
+          }
           return response
         })
-        .catch(() => caches.match('/index.html').then(response => response || caches.match('/offline.html')))
+        .catch(() => {
+          const fallback = isInvite ? caches.match('/invite.html') : caches.match('/index.html')
+          return fallback.then(response => response || caches.match('/offline.html'))
+        })
     )
     return
   }

@@ -12,6 +12,8 @@ An offline-ready workplace attendance PWA for iPhone and desktop. The repository
 ## What works
 
 - QR-only staff check-in, with no typed office-code fallback to share
+- Google sign-in when the Supabase Google provider is configured
+- Admin-prepared private invite links that sign a staff member in automatically without sending email
 - One check-in per worker per local day, including safe retries
 - Offline check-in, persistent local records, and synchronization after reconnecting
 - Shared daily wall with dates and arrival times
@@ -63,7 +65,7 @@ The API tests use isolated temporary SQLite databases and cover seeded records, 
 
 See `supabase/README.md` and `supabase/schema.sql` for the production access model. Staff can be prepared with the columns shown in `supabase/staff.example.csv`.
 
-Do not put a Supabase service role key in the Elm app, browser bridge, repository, or environment exposed to the browser. Staff invites and admin email changes require trusted server code.
+Do not put a Supabase service role key in the Elm app, browser bridge, repository, or environment exposed to the browser. Staff invites, private link generation, and admin email changes require trusted server code.
 
 ## Vercel deployment
 
@@ -85,6 +87,35 @@ After the first deployment:
 2. Configure SMTP or the chosen email provider for reliable delivery.
 3. Apply the ProofsTech brand kit to the magic link email template.
 4. Test the production link on an installed iPhone PWA.
+
+## Google sign-in
+
+The sign-in page checks Supabase’s `/auth/v1/settings` and shows **Continue with Google** only when the Google provider reports as enabled.
+
+To turn it on:
+
+1. Create an OAuth client in Google Cloud Console.
+2. Use `https://gbkdxrbqkohfbscmooic.supabase.co/auth/v1/callback` as the authorized redirect URI.
+3. In Supabase, open Authentication → Providers → Google and save the client ID and secret.
+4. Keep `https://earlycomers.vercel.app` in the allowed redirect URLs.
+
+The client secret belongs in Supabase Auth settings, never in this repository or the browser bundle.
+
+## Private invite links
+
+Admins can prepare a private link from the Team page or when adding a new worker. The `invite-staff` edge function asks Supabase for a one-time magic link, then rewrites it to the branded route:
+
+```text
+https://earlycomers.vercel.app/invite?token=…&type=magiclink
+```
+
+Opening that route verifies the token and signs the staff member in automatically. Links expire after one hour, work once, and are never emailed by the app. `invite.html` marks the page `noindex` and `no-referrer` so the token is not passed to third parties.
+
+Deploy the function after changing it:
+
+```sh
+supabase functions deploy invite-staff --project-ref gbkdxrbqkohfbscmooic
+```
 
 ## PWA kit
 

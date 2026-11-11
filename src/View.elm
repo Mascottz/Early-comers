@@ -33,6 +33,7 @@ view model =
                 , scannerView model
                 , installView model
                 , addWorkerView model
+                , inviteLinkView model
                 , toastView model.toast
                 ]
 
@@ -57,7 +58,18 @@ authView model =
             [ div [ class "auth-copy" ]
                 [ p [ class "eyebrow" ] [ text "YOUR PLACE ON THE TEAM" ]
                 , h1 [] [ text "Your workday", br [] [], text "starts with ", em [] [ text "you." ] ]
-                , p [ class "auth-intro" ] [ text "Use the Gmail address invited by ProofsTech. We’ll send a private link to open your workspace." ]
+                , p [ class "auth-intro" ] [ text "Continue with Google, or use the Gmail address invited by ProofsTech to request a private sign-in link." ]
+                , if model.googleSignInEnabled && model.authStatus /= LinkSent then
+                    div [ class "google-signin" ]
+                        [ a [ class "google-button", href (googleAuthUrl model) ]
+                            [ span [ class "google-mark", attribute "aria-hidden" "true" ] [ text "G" ]
+                            , text "Continue with Google"
+                            ]
+                        , div [ class "auth-divider" ] [ span [] [ text "or use your invited email" ] ]
+                        ]
+
+                  else
+                    text ""
                 , if model.authStatus == LinkSent then
                     div [ class "link-sent" ]
                         [ smallFlower
@@ -465,6 +477,11 @@ teamMember model worker =
         , div [ class "team-arrival" ]
             [ small [] [ text "TODAY" ]
             , strong [] [ text (Maybe.map .time arrival |> Maybe.withDefault "Not in yet") ]
+            , if model.role == AdminView then
+                button [ class "invite-link-action", onClick (PrepareInviteLink worker) ] [ text "Prepare link" ]
+
+              else
+                text ""
             ]
         ]
 
@@ -640,8 +657,32 @@ addWorkerView model =
 
                       else
                         text ""
-                    , button [ class "organic-button primary-button compact", type_ "submit" ] [ text "Create staff profile" ]
+                    , button [ class "organic-button primary-button compact", type_ "submit" ] [ text "Create profile & prepare link" ]
                     ]
+                ]
+            ]
+
+
+inviteLinkView : Model -> Html Msg
+inviteLinkView model =
+    if not model.showInviteLink then
+        text ""
+
+    else
+        div [ class "overlay", attribute "role" "dialog", attribute "aria-modal" "true", attribute "aria-label" "Private invite link" ]
+            [ div [ class "organic-modal invite-modal" ]
+                [ div [ class "modal-heading" ]
+                    [ p [ class "eyebrow" ] [ text "PRIVATE SIGN-IN LINK" ]
+                    , button [ class "close-action", onClick CloseInviteLink ] [ text "Close" ]
+                    ]
+                , h2 [] [ text ("Ready for " ++ model.inviteLinkName ++ ".") ]
+                , p [] [ text ("This link signs " ++ model.inviteLinkName ++ " in automatically when opened. Nothing has been emailed or sent.") ]
+                , input [ class "invite-link-field", value model.inviteLink, readonly True, attribute "aria-label" "Private invite link", autocomplete False ] []
+                , div [ class "invite-link-actions" ]
+                    [ button [ class "organic-button primary-button compact", onClick CopyInviteLink ] [ text "Copy link" ]
+                    , button [ class "text-action", onClick CloseInviteLink ] [ text "Done" ]
+                    ]
+                , p [ class "invite-link-footnote" ] [ text "The link is single use and expires after one hour. Send it privately to the right person." ]
                 ]
             ]
 
@@ -676,6 +717,23 @@ styledProfileName name =
 onSubmitForm : Msg -> Attribute Msg
 onSubmitForm msg =
     preventDefaultOn "submit" (Decode.succeed ( msg, True ))
+
+
+googleAuthUrl : Model -> String
+googleAuthUrl model =
+    case model.supabase of
+        Just cloud ->
+            cloud.url ++ "/auth/v1/authorize?provider=google&redirect_to=" ++ encodeUrlPart model.appOrigin
+
+        Nothing ->
+            "#"
+
+
+encodeUrlPart : String -> String
+encodeUrlPart value =
+    value
+        |> String.replace ":" "%3A"
+        |> String.replace "/" "%2F"
 
 
 unique : List String -> List String

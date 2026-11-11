@@ -36,6 +36,9 @@ port clearSession : () -> Cmd msg
 port exportCsv : String -> Cmd msg
 
 
+port copyInviteLink : String -> Cmd msg
+
+
 port scanDecoded : (String -> msg) -> Sub msg
 
 
@@ -43,6 +46,9 @@ port scannerMessage : (String -> msg) -> Sub msg
 
 
 port onlineChanged : (Bool -> msg) -> Sub msg
+
+
+port linkCopied : (Bool -> msg) -> Sub msg
 
 
 main : Program Flags Model Msg
@@ -107,8 +113,12 @@ init flags =
                         RestoringSession
             , authEmail = ""
             , authMessage = ""
+            , googleSignInEnabled = False
             , refreshing = False
             , appOrigin = flags.origin
+            , showInviteLink = False
+            , inviteLink = ""
+            , inviteLinkName = ""
             }
 
         restored =
@@ -144,8 +154,16 @@ init flags =
 
                 _ ->
                     Cmd.none
+
+        settingsCommand =
+            case ( config, flags.online ) of
+                ( Just cloud, True ) ->
+                    Supabase.getAuthSettings cloud
+
+                _ ->
+                    Cmd.none
     in
-    ( model, Cmd.batch [ Task.perform SetZone Time.here, initialCommand ] )
+    ( model, Cmd.batch [ Task.perform SetZone Time.here, initialCommand, settingsCommand ] )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -265,6 +283,14 @@ updateCore msg model =
                     else
                         ( { model | authMessage = "Enter your invited email address." }, Cmd.none )
 
+        GotAuthSettings result ->
+            case result of
+                Ok settings ->
+                    ( { model | googleSignInEnabled = settings.googleSignIn }, Cmd.none )
+
+                Err _ ->
+                    ( { model | googleSignInEnabled = False }, Cmd.none )
+
         MagicLinkResult result ->
             case result of
                 Ok _ ->
@@ -371,11 +397,20 @@ updateCore msg model =
             signOut model
 
         OnlineChanged online ->
+            let
+                settingsCommand =
+                    case ( online, model.supabase, model.authStatus ) of
+                        ( True, Just cloud, SignedOut ) ->
+                            Supabase.getAuthSettings cloud
+
+                        _ ->
+                            Cmd.none
+            in
             ( { model | online = online }
             , if online then
                 case model.supabase of
                     Just _ ->
-                        Cmd.batch (cloudFetch model :: List.map (cloudCheckIn model) (pendingEntries model))
+                        Cmd.batch (settingsCommand :: cloudFetch model :: List.map (cloudCheckIn model) (pendingEntries model))
 
                     Nothing ->
                         Cmd.batch (Api.getState :: List.map Api.checkIn (pendingEntries model))
@@ -457,7 +492,7 @@ updateCore msg model =
             else
                 case ( model.supabase, model.session ) of
                     ( Just cloud, Just session ) ->
-                        ( model, Supabase.inviteWorker cloud session model.newWorkerName model.newWorkerEmail model.newWorkerNickname model.newWorkerTitle )
+                        ( model, Supabase.inviteWorker cloud session model.newWorkerName model.newWorkerEmail model.newWorkerNickname model.newWorkerTitle model.appOrigin )
 
                     _ ->
                         ( model, Api.createWorker (String.trim model.newWorkerName) (String.trim model.newWorkerTitle) )
@@ -479,6 +514,81 @@ updateCore msg model =
 
                 Err _ ->
                     ( { model | toast = Just (Toast "Worker not added" "Please try again in a moment.") }, Cmd.none )
+
+        InviteCreated result ->
+            case result of
+                Ok invite ->
+                    ( { model
+                        | workers = invite.worker :: List.filter (\worker -> worker.id /= invite.worker.id) model.workers
+                        , showAddWorker = False
+                        , newWorkerName = ""
+                        , newWorkerTitle = ""
+                        , newWorkerEmail = ""
+                        , newWorkerNickname = ""
+                        , showInviteLink = invite.inviteLink /= ""
+                        , inviteLink = invite.inviteLink
+                        , inviteLinkName = invite.worker.name
+                        , toast =
+                            if invite.inviteLink == "" then
+                                Just (Toast (invite.worker.name ++ " is on the team") "The profile was created, but the private link could not be prepared.")
+
+                            else
+                                Nothing
+                      }
+                    , Cmd.none
+                    )
+
+                Err _ ->
+                    ( { model | toast = Just (Toast "Worker not added" "Please try again in a moment.") }, Cmd.none )
+
+        PrepareInviteLink worker ->
+            if model.role /= AdminView then
+                ( model, Cmd.none )
+
+            else if not model.online then
+                ( { model | toast = Just (Toast "Reconnect to prepare this link" "Invite links are generated securely by the office.") }, Cmd.none )
+
+            else
+                case ( model.supabase, model.session ) of
+                    ( Just cloud, Just session ) ->
+                        ( model, Supabase.prepareInviteLink cloud session worker.id model.appOrigin )
+
+                    _ ->
+                        ( { model | toast = Just (Toast "Invite links need Supabase" "This local demo cannot prepare a private sign-in link.") }, Cmd.none )
+
+        InviteLinkPrepared result ->
+            case result of
+                Ok invite ->
+                    ( { model
+                        | showInviteLink = True
+                        , inviteLink = invite.inviteLink
+                        , inviteLinkName = invite.worker.name
+                      }
+                    , Cmd.none
+                    )
+
+                Err _ ->
+                    ( { model | toast = Just (Toast "Invite link not prepared" "Please try again in a moment.") }, Cmd.none )
+
+        CloseInviteLink ->
+            ( { model | showInviteLink = False, inviteLink = "", inviteLinkName = "" }, Cmd.none )
+
+        CopyInviteLink ->
+            ( model, copyInviteLink model.inviteLink )
+
+        InviteLinkCopied copied ->
+            ( { model
+                | toast =
+                    Just
+                        (if copied then
+                            Toast "Invite link copied" "Send it privately to the right person when you are ready."
+
+                         else
+                            Toast "Copy is unavailable" "Select the link and copy it manually."
+                        )
+              }
+            , Cmd.none
+            )
 
         DownloadQr ->
             ( model, downloadQr () )
@@ -608,6 +718,9 @@ signOut model =
         , role = WorkerView
         , page = Home
         , refreshing = False
+        , showInviteLink = False
+        , inviteLink = ""
+        , inviteLinkName = ""
       }
     , clearSession ()
     )
@@ -649,4 +762,5 @@ subscriptions _ =
         , scanDecoded ScanDecoded
         , scannerMessage ScannerMessage
         , onlineChanged OnlineChanged
+        , linkCopied InviteLinkCopied
         ]

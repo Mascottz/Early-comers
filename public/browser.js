@@ -117,6 +117,15 @@ app.ports.exportCsv.subscribe(csv => {
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 })
 
+app.ports.copyInviteLink.subscribe(async text => {
+  try {
+    await navigator.clipboard.writeText(text)
+    app.ports.linkCopied.send(true)
+  } catch (_) {
+    app.ports.linkCopied.send(false)
+  }
+})
+
 window.addEventListener('online', () => app.ports.onlineChanged.send(true))
 window.addEventListener('offline', () => app.ports.onlineChanged.send(false))
 

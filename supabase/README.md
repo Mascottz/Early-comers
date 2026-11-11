@@ -6,7 +6,7 @@ Supabase is the shared source of truth for staff identity and attendance. The El
 
 1. Disable public email signups in Supabase Auth. Staff join only through an admin invite.
 2. Add approved admin addresses to `admin_emails` with a trusted SQL session. Admin status is checked from the verified email in the auth token.
-3. Create a row in `staff_invites` for each staff member, then send an invite through the Supabase Admin API. Never put the service role key in the PWA.
+3. Create a row in `staff_invites` for each staff member, then prepare a one-time link through the Supabase Admin API. The `invite-staff` edge function keeps the service role key server-side and returns a branded `/invite` link. Never put the service role key in the PWA.
 4. Run `schema.sql` in the Supabase SQL editor.
 5. Configure the Elm browser bridge with the project URL and public anon key. The anon key is safe for the browser only when the included row level security policies are active.
 
@@ -29,5 +29,16 @@ The device creates a stable attendance ID and records `occurred_at`, `local_date
 - Enable email.
 - Disable public signups.
 - Enable magic links.
+- Optionally enable Google and store its client ID and secret in Supabase Auth settings.
 - Add the production PWA URL to the allowed redirect URLs.
 - Use HTTPS in production so camera access, installation, and service workers work on iPhone.
+
+## Private invite links
+
+The app never sends invite email itself. An admin prepares a link for one staff member, and the `invite-staff` edge function generates a one-time token with the Admin API. The branded link is:
+
+```text
+https://earlycomers.vercel.app/invite?token=…&type=magiclink
+```
+
+`invite.html` verifies the token with Supabase, then redirects back to the app with a normal session. Links expire after one hour and work once. Keep the edge function’s `verify_jwt` setting enabled; it checks both the signed-in user and `admin_emails`.

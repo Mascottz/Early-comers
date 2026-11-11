@@ -54,6 +54,11 @@ type alias AuthUser =
     }
 
 
+type alias AuthSettings =
+    { googleSignIn : Bool
+    }
+
+
 type alias Worker =
     { id : String
     , name : String
@@ -80,6 +85,12 @@ type alias State =
     { workers : List Worker
     , entries : List Entry
     , officeCode : String
+    }
+
+
+type alias InviteResult =
+    { worker : Worker
+    , inviteLink : String
     }
 
 
@@ -116,8 +127,12 @@ type alias Model =
     , authStatus : AuthStatus
     , authEmail : String
     , authMessage : String
+    , googleSignInEnabled : Bool
     , refreshing : Bool
     , appOrigin : String
+    , showInviteLink : Bool
+    , inviteLink : String
+    , inviteLinkName : String
     }
 
 
@@ -145,6 +160,7 @@ type Msg
     | SetAuthEmail String
     | SendMagicLink
     | MagicLinkResult (Result Http.Error ())
+    | GotAuthSettings (Result Http.Error AuthSettings)
     | AuthUserReceived (Result Http.Error AuthUser)
     | SessionRefreshed (Result Http.Error Session)
     | GotCloudWorkers (Result Http.Error (List Worker))
@@ -164,6 +180,12 @@ type Msg
     | SetNewWorkerNickname String
     | SubmitWorker
     | WorkerCreated (Result Http.Error Worker)
+    | InviteCreated (Result Http.Error InviteResult)
+    | PrepareInviteLink Worker
+    | InviteLinkPrepared (Result Http.Error InviteResult)
+    | CloseInviteLink
+    | CopyInviteLink
+    | InviteLinkCopied Bool
     | DownloadQr
     | PrintQr
     | ExportRecords
