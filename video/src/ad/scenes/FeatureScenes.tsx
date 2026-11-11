@@ -22,7 +22,7 @@ const FeatureScene: React.FC<FeatureSceneProps> = ({
   note,
 }) => {
   const frame = useCurrentFrame();
-  const progress = useSteadyProgress(0.1, 0.94);
+  const progress = useSteadyProgress(0.0, 0.6);
 
   const noteIn = note
     ? interpolate(frame, [note.at, note.at + 16], [0, 1], {
@@ -110,13 +110,6 @@ export const PassScene: React.FC = () => (
     src="screens/office-qr.png"
     imgHeight={927}
     accent="duo"
-    note={{
-      title: 'Valid today only',
-      detail: 'It stops working at midnight',
-      x: 1382,
-      y: 828,
-      at: 122,
-    }}
   />
 );
 

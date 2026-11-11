@@ -51,20 +51,24 @@ const AppIcon: React.FC<{ size?: number; label?: string }> = ({ size = 104, labe
       <div
         style={{
           position: 'absolute',
-          top: -2,
-          right: -2,
-          width: size * 0.34,
-          height: size * 0.34,
-          borderRadius: '50%',
+          top: -12,
+          right: -10,
+          zIndex: 6,
+          padding: '3px 10px',
+          borderRadius: 999,
           background: colors.yellow,
           color: colors.ink,
           fontFamily: fonts.body,
           fontWeight: 500,
-          fontSize: size * 0.19,
+          fontSize: 15,
+          lineHeight: 1.35,
+          letterSpacing: '0.04em',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          border: `3px solid ${colors.paper}`,
+          border: `2px solid ${colors.paper}`,
+          whiteSpace: 'nowrap',
+          boxShadow: '0 6px 14px rgba(23,63,53,0.16)',
         }}
       >
         NEW

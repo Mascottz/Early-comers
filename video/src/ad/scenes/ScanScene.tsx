@@ -14,7 +14,7 @@ const STEPS = [
 
 const QRPanel: React.FC<{ frame: number }> = ({ frame }) => {
   const enter = spring({ frame: frame - 16, fps: 30, config: { damping: 18, stiffness: 90 } });
-  const qrBox = 356;
+  const qrBox = 416;
   const s = qrBox / QR_CROP.size;
   const scan = ((frame - 30) % 74) / 74;
   const scanY = interpolate(scan, [0, 1], [24, qrBox - 12]);
@@ -24,10 +24,10 @@ const QRPanel: React.FC<{ frame: number }> = ({ frame }) => {
     <div
       style={{
         position: 'absolute',
-        left: 660,
+        left: 616,
         top: 372,
-        width: 440,
-        height: 440,
+        width: 500,
+        height: 500,
         opacity: enter,
         transform: `translateY(${(1 - enter) * 30}px) scale(${0.94 + 0.06 * enter})`,
       }}
@@ -105,8 +105,8 @@ const QRPanel: React.FC<{ frame: number }> = ({ frame }) => {
 };
 
 const CheckInCard: React.FC<{ frame: number }> = ({ frame }) => {
-  const enter = spring({ frame: frame - 122, fps: 30, config: { damping: 17, stiffness: 100 } });
-  const badgeIn = interpolate(frame, [150, 168], [0, 1], {
+  const enter = spring({ frame: frame - 104, fps: 30, config: { damping: 17, stiffness: 100 } });
+  const badgeIn = interpolate(frame, [138, 156], [0, 1], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
   });
@@ -115,9 +115,9 @@ const CheckInCard: React.FC<{ frame: number }> = ({ frame }) => {
     <div
       style={{
         position: 'absolute',
-        left: 1180,
-        top: 430,
-        width: 590,
+        left: 1214,
+        top: 432,
+        width: 630,
         opacity: enter,
         transform: `translateX(${(1 - enter) * 40}px)`,
       }}

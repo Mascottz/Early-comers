@@ -24,7 +24,7 @@ const Chip: React.FC<{
     style={{
       position: 'absolute',
       left: `${pct}%`,
-      top: -12,
+      top: 78,
       transform: `translate(-50%, -100%) translateY(${(1 - appear) * 12}px)`,
       opacity: appear,
       display: 'flex',
@@ -96,16 +96,16 @@ export const LateScene: React.FC = () => {
         size={66}
       />
 
-      <div style={{ position: 'absolute', left: 132, top: 500, width: TRACK_WIDTH }}>
-        <div style={{ position: 'relative', height: 220 }}>
+      <div style={{ position: 'absolute', left: 132, top: 456, width: TRACK_WIDTH }}>
+        <div style={{ position: 'relative', height: 260 }}>
           <div
             style={{
               position: 'absolute',
               left: 0,
               right: 0,
-              top: 90,
-              height: 10,
-              borderRadius: 6,
+              top: 96,
+              height: 14,
+              borderRadius: 7,
               background: 'rgba(23,63,53,0.10)',
             }}
           />
@@ -113,9 +113,9 @@ export const LateScene: React.FC = () => {
             style={{
               position: 'absolute',
               left: 0,
-              top: 90,
-              height: 10,
-              borderRadius: 6,
+              top: 96,
+              height: 14,
+              borderRadius: 7,
               width: `${reveal * 75}%`,
               background: colors.ink,
             }}
@@ -124,10 +124,10 @@ export const LateScene: React.FC = () => {
             style={{
               position: 'absolute',
               left: '75%',
-              top: 90,
-              height: 10,
+              top: 96,
+              height: 14,
               width: `${Math.max(0, (reveal - 0.75) / 0.25) * 25}%`,
-              borderRadius: 6,
+              borderRadius: 7,
               background: `linear-gradient(90deg, ${colors.orange}, ${colors.orangeDark})`,
             }}
           />
@@ -138,9 +138,9 @@ export const LateScene: React.FC = () => {
                 style={{
                   position: 'absolute',
                   left: `${tick.pct}%`,
-                  top: 76,
+                  top: 80,
                   width: tick.strong ? 3 : 1.5,
-                  height: tick.strong ? 38 : 24,
+                  height: tick.strong ? 46 : 28,
                   marginLeft: tick.strong ? -1.5 : -0.75,
                   background: tick.strong ? colors.orangeDark : 'rgba(23,63,53,0.30)',
                   opacity: tick.strong ? markerIn : reveal,
@@ -150,10 +150,10 @@ export const LateScene: React.FC = () => {
                 style={{
                   position: 'absolute',
                   left: `${tick.pct}%`,
-                  top: 126,
+                  top: 140,
                   transform: 'translateX(-50%)',
                   fontFamily: '"DM Sans", sans-serif',
-                  fontSize: tick.strong ? 22 : 18,
+                  fontSize: tick.strong ? 25 : 20,
                   fontWeight: tick.strong ? 500 : 400,
                   color: tick.strong ? colors.orangeDark : colors.soft,
                   opacity: tick.strong ? markerIn : reveal,
@@ -173,8 +173,8 @@ export const LateScene: React.FC = () => {
       <div
         style={{
           position: 'absolute',
-          left: 660,
-          top: 742,
+          left: 132,
+          top: 766,
           display: 'flex',
           alignItems: 'center',
           gap: 14,
@@ -198,8 +198,46 @@ export const LateScene: React.FC = () => {
       <div
         style={{
           position: 'absolute',
+          left: 132,
+          top: 892,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 34,
+          opacity: chipLate,
+        }}
+      >
+        {['Once per person, per day', 'Shown on the daily wall', 'Included in every CSV export'].map(
+          (item) => (
+            <div key={item} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span
+                style={{
+                  width: 7,
+                  height: 7,
+                  borderRadius: 4,
+                  background: colors.orange,
+                  opacity: 0.85,
+                }}
+              />
+              <span
+                style={{
+                  fontFamily: '"DM Sans", sans-serif',
+                  fontSize: 18,
+                  letterSpacing: '0.05em',
+                  color: colors.soft,
+                }}
+              >
+                {item}
+              </span>
+            </div>
+          ),
+        )}
+      </div>
+
+      <div
+        style={{
+          position: 'absolute',
           left: 1392,
-          top: 452,
+          top: 392,
           width: 396,
           opacity: cardIn,
           transform: `translateY(${(1 - cardIn) * 26}px)`,
