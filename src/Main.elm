@@ -303,7 +303,7 @@ updateCore msg model =
         SignInResult result ->
             case result of
                 Ok link ->
-                    ( { model | authMessage = "" }, openLink link )
+                    ( { model | authMessage = "", authPassword = "", authPin = "" }, openLink link )
 
                 Err error ->
                     ( { model
