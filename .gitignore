@@ -1,0 +1,12 @@
+node_modules/
+.venv/
+elm-stuff/
+public/app.js
+public/fonts/
+public/vendor/
+data/
+__pycache__/
+*.pyc
+.DS_Store
+.env
+public/runtime-config.js
