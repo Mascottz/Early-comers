@@ -62,6 +62,8 @@ Scenes, in order: hook → today → office pass → scan → lateness → daily
 
 ## CI
 
+`video-preview.yml` is a development helper: it renders a handful of stills from both compositions and publishes them to a `video-preview` branch, so frames can be reviewed without downloading a whole MP4.
+
 Two workflows run on pushes to `main` touching `video/` and via **Run workflow**:
 
 - `.github/workflows/install-video.yml` → `attendance-install-video` artifact and the `install-video-latest` release.
