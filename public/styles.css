@@ -53,6 +53,8 @@ em{font-weight:600;color:var(--orange);font-style:normal}
 .nav-link::after{content:"";position:absolute;bottom:25px;left:50%;width:0;height:2px;background:var(--orange);transform:translateX(-50%) rotate(-4deg);transition:width .25s}
 .nav-link:hover,.nav-link.active{color:var(--ink)}
 .nav-link.active::after{width:100%}
+.nav-scan-link{color:var(--orange-dark)}
+.nav-scan-link:hover{color:var(--ink)}
 .profile-trigger{display:flex;align-items:center;gap:11px;padding:0}
 .profile-copy{text-align:right;display:flex;flex-direction:column}
 .profile-copy strong{font-size:13px;font-weight:500}
@@ -277,6 +279,10 @@ em{font-weight:600;color:var(--orange);font-style:normal}
 .invite-link-actions{display:flex;align-items:center;gap:20px;margin:18px 0 16px;flex-wrap:wrap}
 .invite-link-footnote{font-size:10px;color:var(--ink-soft);border-left:2px solid var(--orange);padding-left:12px;margin:0}
 form label{font-size:9px;letter-spacing:.16em;margin:22px 0 4px;color:var(--ink-soft)}
+.field-head{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;margin:22px 0 4px}
+.field-head label{margin:0}
+.field-toggle{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--orange-dark);border-bottom:1px solid currentColor;padding:0 0 2px;flex:none;line-height:1.4}
+.field-toggle:hover{color:var(--ink)}
 form input{border:0;border-bottom:1px solid #9daba1;background:transparent;padding:11px 0 12px;font-family:Bricolage,sans-serif;font-size:22px;color:var(--ink);border-radius:0;width:100%}
 form input::placeholder{color:#a7aca3}
 form .organic-button{align-self:flex-start;margin-top:28px}

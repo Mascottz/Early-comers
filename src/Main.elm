@@ -93,7 +93,7 @@ init flags =
             , zone = Time.utc
             , online = flags.online
             , serverReady = False
-            , officeCode = "PROOFSTECH-HQ-2026"
+            , officeCode = if String.trim flags.officeCode == "" then "PROOFSTECH-HQ-2026" else String.trim flags.officeCode
             , scanStatus = ScanClosed
             , scanMessage = ""
             , toast = Nothing
@@ -119,6 +119,8 @@ init flags =
             , authPassword = ""
             , authPin = ""
             , authMessage = ""
+            , showAuthPassword = False
+            , showAuthPin = False
             , refreshing = False
             , appOrigin = flags.origin
             , showInviteLink = False
@@ -268,6 +270,12 @@ updateCore msg model =
 
         SetAuthPin value ->
             ( { model | authPin = onlyDigits 6 value, authMessage = "" }, Cmd.none )
+
+        ToggleAuthPassword ->
+            ( { model | showAuthPassword = not model.showAuthPassword }, Cmd.none )
+
+        ToggleAuthPin ->
+            ( { model | showAuthPin = not model.showAuthPin }, Cmd.none )
 
         SignIn ->
             case model.supabase of
@@ -718,6 +726,8 @@ signOut model =
         , authPassword = ""
         , authPin = ""
         , authMessage = ""
+        , showAuthPassword = False
+        , showAuthPin = False
         , currentWorkerId = ""
         , workers = []
         , entries = []
@@ -777,11 +787,24 @@ validOfficeCode model value =
 
 friendlyCameraError : String -> String
 friendlyCameraError message =
-    if String.contains "HTTPS" message then
+    let
+        lower =
+            String.toLower message
+    in
+    if String.contains "https" lower || String.contains "secure" lower then
         "Camera access needs a secure connection. Open the app over HTTPS, then scan the printed office QR."
 
-    else if String.contains "Permission" message || String.contains "Allowed" message then
+    else if String.contains "permission" lower || String.contains "allowed" lower || String.contains "denied" lower then
         "Camera permission is off. Allow camera access in your browser settings, then scan the office QR again."
+
+    else if String.contains "not found" lower || String.contains "no camera" lower || String.contains "overconstrained" lower then
+        "This device has no usable camera. Open Attendance on a phone, then scan the office QR."
+
+    else if String.contains "did not load" lower || String.contains "reload" lower then
+        "The scanner did not load. Reload the page once while online, then try again."
+
+    else if String.contains "did not open" lower then
+        "The camera view did not open. Close this panel and tap Scan again."
 
     else
         "The camera is unavailable right now. Try again in a moment."

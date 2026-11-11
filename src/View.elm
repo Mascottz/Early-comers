@@ -87,20 +87,41 @@ authView model =
                         , autofocus (model.authStatus == SignedOut)
                         ]
                         []
-                    , label [ for "staff-password" ] [ text "TEAM PASSWORD" ]
+                    , div [ class "field-head" ]
+                        [ label [ for "staff-password" ] [ text "TEAM PASSWORD" ]
+                        , button
+                            [ class "field-toggle"
+                            , type_ "button"
+                            , onClick ToggleAuthPassword
+                            , attribute "aria-controls" "staff-password"
+                            , attribute "aria-pressed" (boolString model.showAuthPassword)
+                            ]
+                            [ text (if model.showAuthPassword then "Hide password" else "Show password") ]
+                        ]
                     , input
                         [ id "staff-password"
-                        , type_ "password"
+                        , type_ (if model.showAuthPassword then "text" else "password")
                         , value model.authPassword
                         , onInput SetAuthPassword
                         , placeholder "Shared by ProofsTech"
                         , attribute "autocomplete" "current-password"
                         ]
                         []
-                    , label [ for "staff-pin" ] [ text "YOUR SIX-DIGIT PIN" ]
+                    , div [ class "field-head" ]
+                        [ label [ for "staff-pin" ] [ text "YOUR SIX-DIGIT PIN" ]
+                        , button
+                            [ class "field-toggle"
+                            , type_ "button"
+                            , onClick ToggleAuthPin
+                            , attribute "aria-controls" "staff-pin"
+                            , attribute "aria-pressed" (boolString model.showAuthPin)
+                            ]
+                            [ text (if model.showAuthPin then "Hide PIN" else "Show PIN") ]
+                        ]
                     , input
                         [ id "staff-pin"
-                        , type_ "password"
+                        , class "pin-input"
+                        , type_ (if model.showAuthPin then "text" else "password")
                         , value model.authPin
                         , onInput SetAuthPin
                         , placeholder "••••••"
@@ -139,6 +160,15 @@ authView model =
         ]
 
 
+boolString : Bool -> String
+boolString value =
+    if value then
+        "true"
+
+    else
+        "false"
+
+
 connectionLine : Model -> Html Msg
 connectionLine model =
     if model.online then
@@ -167,9 +197,15 @@ appHeader model =
         , nav [ class "desktop-nav", attribute "aria-label" "Main navigation" ]
             [ navItem model Home "Today"
             , navItem model Wall "Daily wall"
+            , button
+                [ class "nav-link nav-scan-link"
+                , onClick OpenScanner
+                , attribute "aria-label" "Scan the office QR"
+                ]
+                [ text "Scan" ]
             , navItem model Team "Team"
             , if model.role == AdminView then
-                navItem model Office "QR studio"
+                navItem model Office "Office QR"
 
               else
                 text ""
@@ -261,7 +297,7 @@ homeView model =
                     ]
                 , div [ class "hero-actions" ]
                     [ if model.role == AdminView then
-                        button [ class "organic-button primary-button", onClick (Navigate Office) ] [ text "Open QR studio ", span [ class "arrow-mark" ] [] ]
+                        button [ class "organic-button primary-button", onClick (Navigate Office) ] [ text "Office QR ", span [ class "arrow-mark" ] [] ]
 
                       else
                         case ownEntry of

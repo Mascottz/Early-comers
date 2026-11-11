@@ -25,6 +25,7 @@ const app = Elm.Main.init({
     online: navigator.onLine,
     supabaseUrl: config.supabaseUrl || '',
     supabaseKey: config.supabaseKey || '',
+    officeCode: config.officeCode || '',
     origin: window.location.origin
   }
 })
@@ -40,6 +41,7 @@ app.ports.clearSession.subscribe(() => {
 
 let scanner = null
 let stopping = false
+let scanRequest = 0
 
 app.ports.saveLocal.subscribe(value => {
   try {
@@ -49,9 +51,26 @@ app.ports.saveLocal.subscribe(value => {
   }
 })
 
+function waitForElement(id, attempts = 30) {
+  return new Promise((resolve, reject) => {
+    const look = left => {
+      const element = document.getElementById(id)
+      if (element) return resolve(element)
+      if (left <= 0) return reject(new Error('The camera view did not open. Close and try again.'))
+      requestAnimationFrame(() => look(left - 1))
+    }
+    look(attempts)
+  })
+}
+
 app.ports.startScanner.subscribe(async () => {
+  const request = ++scanRequest
   try {
     if (!window.isSecureContext) throw new Error('Camera access needs HTTPS')
+    if (!window.Html5Qrcode) throw new Error('The scanner library did not load. Reload while online.')
+    // The overlay is rendered by Elm after this port fires, so wait for its camera surface.
+    await waitForElement('camera-surface')
+    if (request !== scanRequest) return
     if (scanner) await scanner.clear()
     scanner = new Html5Qrcode('camera-surface', {
       formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
@@ -74,14 +93,25 @@ app.ports.startScanner.subscribe(async () => {
       },
       () => {}
     )
+    if (request !== scanRequest) {
+      try {
+        if (scanner && scanner.isScanning) await scanner.stop()
+        if (scanner) await scanner.clear()
+      } catch (_) {}
+      scanner = null
+      return
+    }
     stopping = false
     app.ports.scannerMessage.send('ready')
   } catch (error) {
-    app.ports.scannerMessage.send(error && error.message ? error.message : 'Camera unavailable')
+    if (request === scanRequest) {
+      app.ports.scannerMessage.send(error && error.message ? error.message : 'Camera unavailable')
+    }
   }
 })
 
 app.ports.stopScanner.subscribe(async () => {
+  scanRequest += 1
   stopping = true
   try {
     if (scanner && scanner.isScanning) await scanner.stop()
