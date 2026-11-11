@@ -3,11 +3,6 @@
   "outputDirectory": "public",
   "installCommand": "npm install",
   "framework": null,
-  "functions": {
-    "api/qr.py": {
-      "runtime": "python3.11"
-    }
-  },
   "rewrites": [
     { "source": "/api/qr.svg", "destination": "/api/qr" },
     { "source": "/(.*)", "destination": "/index.html" }
