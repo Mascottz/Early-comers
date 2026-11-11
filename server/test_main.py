@@ -63,6 +63,26 @@ class AttendanceTests(unittest.TestCase):
         self.assertEqual(worker["initials"], "AO")
         self.assertEqual(len(main.state()["workers"]), 9)
 
+    def test_export_marks_lateness_and_fine(self):
+        main.checkin(main.CheckIn(
+            id="late-record",
+            worker_id="w1",
+            occurred_at=1794418260000,
+            local_date="2026-11-12",
+            local_time="09:31",
+        ))
+        main.checkin(main.CheckIn(
+            id="on-time-record",
+            worker_id="w2",
+            occurred_at=1794414660000,
+            local_date="2026-11-12",
+            local_time="09:30",
+        ))
+        body = main.export_csv_text()
+        self.assertIn("Status,Fine (NGN)", body)
+        self.assertIn("Late,2000", body)
+        self.assertIn("On time,0", body)
+
     def test_office_pass_is_dated_for_today(self):
         payload = main.office_pass_payload()
         self.assertEqual(

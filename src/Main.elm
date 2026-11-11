@@ -684,17 +684,32 @@ attendanceCsv : Model -> String
 attendanceCsv model =
     let
         row entry =
+            let
+                status =
+                    if isLate entry then
+                        "Late"
+
+                    else
+                        "On time"
+
+                fine =
+                    if isLate entry then
+                        String.fromInt lateFine
+
+                    else
+                        "0"
+            in
             case workerById model entry.workerId of
                 Just worker ->
-                    [ worker.name, worker.title, entry.date, entry.time, entry.source ]
+                    [ worker.name, worker.title, entry.date, entry.time, entry.source, status, fine ]
 
                 Nothing ->
-                    [ "Former staff member", "", entry.date, entry.time, entry.source ]
+                    [ "Former staff member", "", entry.date, entry.time, entry.source, status, fine ]
 
         escape value =
             "\"" ++ String.replace "\"" "\"\"" value ++ "\""
     in
-    "Name,Role,Date,Time,Source\n"
+    "Name,Role,Date,Time,Source,Status,Fine (NGN)\n"
         ++ (model.entries
                 |> List.sortBy .timestamp
                 |> List.map (\entry -> String.join "," (List.map escape (row entry)))

@@ -394,10 +394,14 @@ daySummary model arrivals =
             , strong [] [ text (String.fromInt onTime ++ " people") ]
             ]
         , div [ class "stat-line" ]
+            [ span [] [ text "Late" ]
+            , strong [] [ text (String.fromInt (lateCount arrivals) ++ " · " ++ formatNaira (lateFineTotal arrivals)) ]
+            ]
+        , div [ class "stat-line" ]
             [ span [] [ text "Saved offline" ]
             , strong [] [ text (String.fromInt (List.length (pendingEntries model)) ++ " records") ]
             ]
-        , p [ class "summary-footnote" ] [ text "Small moments, kept honestly. Times come straight from each check-in." ]
+        , p [ class "summary-footnote" ] [ text ("Grace ends at " ++ lateGrace ++ ". Every late arrival carries a " ++ formatNaira lateFine ++ " fine.") ]
         ]
 
 
@@ -458,7 +462,15 @@ entryRow model entry =
                     ]
                 , div [ class "entry-source" ]
                     [ small [] [ text (if entry.synced then entry.source else "Waiting to sync") ]
-                    , span [ class (if isLate entry then "timing-note late" else "timing-note") ] [ text (if isLate entry then "A little late" else "On time") ]
+                    , span [ class (if isLate entry then "timing-note late" else "timing-note") ]
+                        [ text
+                            (if isLate entry then
+                                "Late · " ++ formatNaira lateFine
+
+                             else
+                                "On time"
+                            )
+                        ]
                     ]
                 , time [ class "entry-time" ] [ text entry.time ]
                 ]
@@ -504,6 +516,7 @@ wallView model =
                 , strong [ class "oversized-number" ] [ text (String.fromInt workersPresent) ]
                 , h3 [] [ text (if workersPresent == 1 then "person showed up." else "people showed up.") ]
                 , p [] [ text "Not a leaderboard. Just a truthful little record of being here, together." ]
+                , p [ class "wall-fines" ] [ text ("Late fines: " ++ formatNaira (lateFineTotal entries)) ]
                 , div [ class "handwritten-line" ] [ text "Every day has its own shape." ]
                 ]
             ]
