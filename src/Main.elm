@@ -119,10 +119,6 @@ init flags =
             , authPassword = ""
             , authPin = ""
             , authMessage = ""
-            , setupPin = ""
-            , setupPinConfirm = ""
-            , setupMessage = ""
-            , savingPin = False
             , refreshing = False
             , appOrigin = flags.origin
             , showInviteLink = False
@@ -317,18 +313,18 @@ updateCore msg model =
 
         AuthUserReceived result ->
             case ( result, model.session, model.supabase ) of
-                ( Ok user, Just session, Just cloud ) ->
+                ( Ok user, Just session, Just _ ) ->
                     let
                         updatedSession =
                             { session | userId = user.id, email = String.toLower user.email }
 
                         updated =
-                            { model | session = Just updatedSession, currentWorkerId = user.id, refreshing = False }
+                            { model | session = Just updatedSession, currentWorkerId = user.id, authStatus = Authenticated, refreshing = False }
                     in
                     ( updated
                     , Cmd.batch
                         [ saveSession (Supabase.encodeSession updatedSession)
-                        , Supabase.pinStatus cloud updatedSession
+                        , cloudFetch updated
                         ]
                     )
 
@@ -342,94 +338,14 @@ updateCore msg model =
                 _ ->
                     ( model, Cmd.none )
 
-        PinStatusReceived result ->
-            case ( result, model.supabase ) of
-                ( Ok True, Just _ ) ->
-                    let
-                        updated =
-                            { model | authStatus = Authenticated, setupMessage = "", savingPin = False }
-                    in
-                    ( updated, cloudFetch updated )
-
-                ( Ok False, Just _ ) ->
-                    ( { model | authStatus = NeedsPin, setupPin = "", setupPinConfirm = "", setupMessage = "" }, Cmd.none )
-
-                ( Err _, Just _ ) ->
-                    let
-                        updated =
-                            { model | authStatus = Authenticated }
-                    in
-                    ( updated, cloudFetch updated )
-
-                _ ->
-                    ( model, Cmd.none )
-
-        SetSetupPin value ->
-            ( { model | setupPin = onlyDigits 6 value, setupMessage = "" }, Cmd.none )
-
-        SetSetupPinConfirm value ->
-            ( { model | setupPinConfirm = onlyDigits 6 value, setupMessage = "" }, Cmd.none )
-
-        SavePin ->
-            case ( model.supabase, model.session ) of
-                ( Just cloud, Just session ) ->
-                    if String.length model.setupPin /= 6 then
-                        ( { model | setupMessage = "Choose exactly six digits." }, Cmd.none )
-
-                    else if model.setupPin /= model.setupPinConfirm then
-                        ( { model | setupMessage = "The two PINs do not match." }, Cmd.none )
-
-                    else
-                        ( { model | savingPin = True, setupMessage = "" }
-                        , Supabase.setPin cloud session model.setupPin
-                        )
-
-                _ ->
-                    ( model, Cmd.none )
-
-        SavePinResult result ->
-            case result of
-                Ok True ->
-                    let
-                        updated =
-                            { model
-                                | authStatus = Authenticated
-                                , savingPin = False
-                                , setupPin = ""
-                                , setupPinConfirm = ""
-                                , setupMessage = ""
-                                , toast = Just (Toast "PIN saved" "Use your email, the team password, and this PIN next time.")
-                            }
-                    in
-                    ( updated, cloudFetch updated )
-
-                _ ->
-                    ( { model
-                        | savingPin = False
-                        , setupMessage = "That PIN was not saved. Use exactly six digits, then try again."
-                      }
-                    , Cmd.none
-                    )
-
         SessionRefreshed result ->
             case ( result, model.supabase ) of
-                ( Ok session, Just cloud ) ->
+                ( Ok session, Just _ ) ->
                     let
                         updated =
-                            { model | session = Just session, currentWorkerId = session.userId, refreshing = False }
+                            { model | session = Just session, currentWorkerId = session.userId, authStatus = Authenticated, refreshing = False }
                     in
-                    if model.authStatus == Authenticated then
-                        ( { updated | authStatus = Authenticated }
-                        , Cmd.batch [ saveSession (Supabase.encodeSession session), cloudFetch updated ]
-                        )
-
-                    else
-                        ( updated
-                        , Cmd.batch
-                            [ saveSession (Supabase.encodeSession session)
-                            , Supabase.pinStatus cloud session
-                            ]
-                        )
+                    ( updated, Cmd.batch [ saveSession (Supabase.encodeSession session), cloudFetch updated ] )
 
                 ( Err _, Just _ ) ->
                     signOut model
@@ -802,10 +718,6 @@ signOut model =
         , authPassword = ""
         , authPin = ""
         , authMessage = ""
-        , setupPin = ""
-        , setupPinConfirm = ""
-        , setupMessage = ""
-        , savingPin = False
         , currentWorkerId = ""
         , workers = []
         , entries = []
@@ -840,7 +752,7 @@ signInMessage error =
             "That email is not approved for ProofsTech attendance."
 
         Http.BadStatus 409 ->
-            "No PIN is set for this email yet. Open the private first-time link an admin prepared, choose your PIN, then sign in here."
+            "We could not set up this PIN. Try again in a moment."
 
         Http.BadStatus 429 ->
             "Too many attempts. Wait 15 minutes, then try again."

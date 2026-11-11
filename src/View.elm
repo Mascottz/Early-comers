@@ -18,9 +18,6 @@ view model =
         ( Just _, SigningIn ) ->
             authView model
 
-        ( Just _, NeedsPin ) ->
-            pinSetupView model
-
         ( Just _, RestoringSession ) ->
             authLoading
 
@@ -133,89 +130,8 @@ authView model =
                         , span [ class "arrow-mark" ] []
                         ]
                     ]
-                , p [ class "auth-firsttime" ] [ text "First time here? Open the private first-time link an admin prepared for you. It signs you in, then you choose your PIN." ]
+                , p [ class "auth-firsttime" ] [ text "First time here? The six digits you enter become your PIN. After that, the same email, team password, and PIN open your workspace." ]
                 , p [ class "auth-privacy" ] [ text "Only approved staff emails can sign in. Admin access comes from your verified email, never a setting on your phone." ]
-                ]
-            , authArt
-            ]
-        , div [ class "auth-footer" ] [ text "Simple attendance, even on no data days." ]
-        ]
-
-
-pinSetupView : Model -> Html Msg
-pinSetupView model =
-    let
-        email =
-            model.session
-                |> Maybe.map .email
-                |> Maybe.withDefault ""
-    in
-    div [ class "auth-page" ]
-        [ authTop
-        , div [ class "auth-layout" ]
-            [ div [ class "auth-copy" ]
-                [ p [ class "eyebrow" ] [ text "ONE LAST STEP" ]
-                , h1 [] [ text "Choose your", br [] [], text "six-digit ", em [] [ text "PIN." ] ]
-                , p [ class "auth-intro" ]
-                    [ text
-                        (if email == "" then
-                            "You are signed in. Set a PIN only you know."
-
-                         else
-                            "You are signed in as " ++ email ++ ". Set a PIN only you know."
-                        )
-                    ]
-                , Html.form [ class "auth-form", onSubmitForm SavePin ]
-                    [ label [ for "setup-pin" ] [ text "NEW PIN" ]
-                    , input
-                        [ id "setup-pin"
-                        , type_ "password"
-                        , value model.setupPin
-                        , onInput SetSetupPin
-                        , placeholder "••••••"
-                        , attribute "inputmode" "numeric"
-                        , attribute "maxlength" "6"
-                        , attribute "pattern" "[0-9]{6}"
-                        , attribute "autocomplete" "new-password"
-                        , autofocus True
-                        ]
-                        []
-                    , label [ for "setup-pin-confirm" ] [ text "CONFIRM PIN" ]
-                    , input
-                        [ id "setup-pin-confirm"
-                        , type_ "password"
-                        , value model.setupPinConfirm
-                        , onInput SetSetupPinConfirm
-                        , placeholder "••••••"
-                        , attribute "inputmode" "numeric"
-                        , attribute "maxlength" "6"
-                        , attribute "pattern" "[0-9]{6}"
-                        , attribute "autocomplete" "new-password"
-                        ]
-                        []
-                    , if model.setupMessage /= "" then
-                        p [ class "form-error" ] [ text model.setupMessage ]
-
-                      else
-                        text ""
-                    , button
-                        [ class "organic-button primary-button compact"
-                        , type_ "submit"
-                        , disabled (model.savingPin || String.length model.setupPin /= 6 || String.length model.setupPinConfirm /= 6)
-                        ]
-                        [ text
-                            (if model.savingPin then
-                                "Saving your PIN…"
-
-                             else
-                                "Save my PIN "
-                            )
-                        , span [ class "arrow-mark" ] []
-                        ]
-                    ]
-                , p [ class "auth-firsttime" ] [ text "From now on, your email, the team password, and this PIN open your workspace." ]
-                , button [ class "underlined-action", onClick SignOut ] [ text "Sign in as someone else" ]
-                , p [ class "auth-privacy" ] [ text "Never share your PIN. After this step it is the only thing that proves the sign-in is really you." ]
                 ]
             , authArt
             ]

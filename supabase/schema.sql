@@ -221,25 +221,30 @@ alter table public.auth_throttle enable row level security;
 revoke all on public.staff_pins from anon, authenticated;
 revoke all on public.auth_throttle from anon, authenticated;
 
-create or replace function public.set_my_pin(p_pin text)
+-- Server-only. Called by `pin-auth` on a first sign-in to claim the email.
+create or replace function public.set_staff_pin_for_email(p_email text, p_pin text)
 returns boolean
 language plpgsql
 security definer
 set search_path to 'public', 'extensions', 'pg_temp'
 as $$
+declare
+  profile public.staff_profiles;
 begin
-  if auth.uid() is null then
-    raise exception 'Sign in first';
-  end if;
   if p_pin !~ '^[0-9]{6}$' then
     raise exception 'PIN must be exactly six digits';
   end if;
-  if not public.is_active_staff() then
-    raise exception 'Active staff only';
+
+  select * into profile
+  from public.staff_profiles
+  where lower(email) = lower(trim(p_email)) and active = true;
+
+  if profile.id is null then
+    return false;
   end if;
 
   insert into public.staff_pins(worker_id, pin_hash, failed_attempts, locked_until, updated_at)
-  values (auth.uid(), crypt(p_pin, gen_salt('bf', 10)), 0, null, now())
+  values (profile.id, crypt(p_pin, gen_salt('bf', 10)), 0, null, now())
   on conflict (worker_id) do update
     set pin_hash = excluded.pin_hash,
         failed_attempts = 0,
@@ -247,18 +252,6 @@ begin
         updated_at = now();
   return true;
 end;
-$$;
-
-create or replace function public.my_pin_status()
-returns boolean
-language sql
-stable
-security definer
-set search_path to 'public', 'pg_temp'
-as $$
-  select exists (
-    select 1 from public.staff_pins where worker_id = auth.uid()
-  );
 $$;
 
 -- Server-only. Called by the `pin-auth` edge function with the service role.
@@ -396,14 +389,12 @@ begin
 end;
 $$;
 
-revoke all on function public.set_my_pin(text) from public, anon;
-revoke all on function public.my_pin_status() from public, anon;
+revoke all on function public.set_staff_pin_for_email(text, text) from public, anon, authenticated;
 revoke all on function public.verify_staff_pin(text, text) from public, anon, authenticated;
 revoke all on function public.check_auth_throttle(text) from public, anon, authenticated;
 revoke all on function public.record_auth_failure(text) from public, anon, authenticated;
 revoke all on function public.clear_auth_failures(text) from public, anon, authenticated;
-grant execute on function public.set_my_pin(text) to authenticated, service_role;
-grant execute on function public.my_pin_status() to authenticated, service_role;
+grant execute on function public.set_staff_pin_for_email(text, text) to service_role;
 grant execute on function public.verify_staff_pin(text, text) to service_role;
 grant execute on function public.check_auth_throttle(text) to service_role;
 grant execute on function public.record_auth_failure(text) to service_role;

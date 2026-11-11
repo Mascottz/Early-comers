@@ -132,13 +132,20 @@ Deno.serve(async (request) => {
   if (result.status === 'email_not_allowed') {
     return json({ error: 'This email is not approved for ProofsTech attendance' }, 403)
   }
-  if (result.status === 'pin_not_set') {
-    return json({ error: 'No PIN is set for this email. Use the first-time email link, then set your PIN.' }, 409)
-  }
   if (result.status === 'locked') {
     return json({ error: 'Too many PIN attempts. Try again later.', retry_after: result.retry_after }, 429)
   }
-  if (result.status !== 'ok') {
+
+  if (result.status === 'pin_not_set') {
+    // First sign-in for this approved email: the PIN they typed becomes their PIN.
+    const enrolled = await rpc(base, headers, 'set_staff_pin_for_email', {
+      p_email: email,
+      p_pin: pin,
+    })
+    if (!enrolled) {
+      return json({ error: 'Could not set up this PIN. Try again in a moment.' }, 409)
+    }
+  } else if (result.status !== 'ok') {
     return json({
       error: 'Email, team password, or PIN is incorrect',
       attempts_left: result.attempts_left,

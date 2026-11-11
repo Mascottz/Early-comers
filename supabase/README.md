@@ -29,7 +29,7 @@ The device creates a stable attendance ID and records `occurred_at`, `local_date
 
 - Enable email.
 - Disable public signups.
-- Enable magic links; they are used once to enrol a person and let them choose a PIN.
+- Enable magic links; private links remain an admin-prepared fallback route into the app.
 - Add the production PWA URL to the allowed redirect URLs.
 - Use HTTPS in production so camera access, installation, and service workers work on iPhone.
 
@@ -43,12 +43,12 @@ The sign-in page asks for three things:
 
 The universal password alone never opens a session. The `pin-auth` function checks the password server-side, throttles repeated failures, verifies the PIN, and only then asks the Admin API for a one-time magic-link token. The browser follows the returned branded `/invite?token=…` link, and `invite.html` finishes the sign-in. No secret is ever sent to the browser.
 
-First-time staff use the private link prepared by an admin. Once that link opens the app, the person is asked to choose a PIN before the workspace appears. After that, the email + team password + PIN page is the normal route.
+There is no separate PIN setup screen. On the first successful sign-in for an approved email, the six digits entered are hashed and saved as that person's PIN. Later sign-ins must match it. Private links prepared by an admin still work and go straight into the app. Because the team password is shared, have staff claim their emails promptly.
 
 - Set the shared password with `TEAM_ACCESS_PASSWORD` in edge function secrets, never in the repo or browser config.
 - PIN verification locks an account for 15 minutes after five wrong PINs.
 - IP-level failures are throttled after ten bad attempts in 15 minutes.
-- If an email has no PIN yet, `pin-auth` returns `409` and the page tells the person to use their private first-time link.
+- If an email has no PIN yet, `pin-auth` enrols the entered PIN through the service-only `set_staff_pin_for_email` function, then opens the session. A `409` means that enrolment failed and the person should try again.
 
 ## Private invite links
 

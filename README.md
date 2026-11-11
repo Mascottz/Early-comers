@@ -86,13 +86,13 @@ After the first deployment:
 1. Add the production URL to Supabase Auth’s site URL and allowed redirect URLs.
 2. Deploy both edge functions: `invite-staff` and `pin-auth`.
 3. Set the `TEAM_ACCESS_PASSWORD` edge secret. Never put it in Vercel, the repo, or browser config.
-4. Test a first-time private link and the email + team password + PIN page on an installed iPhone PWA.
+4. Test the email + team password + PIN page, including a first-time email, on an installed iPhone PWA.
 
 ## Signing in
 
 The sign-in page accepts only emails that already exist in `staff_profiles`. It asks for the approved email, the shared ProofsTech team password, and that person's own six-digit PIN. The shared password alone never opens a session: the `pin-auth` edge function checks it server-side, verifies the PIN against the bcrypt hash in `staff_pins`, then returns a single-use `/invite?token=…` link for the browser to follow.
 
-A person who has not chosen a PIN yet is sent to the private first-time link prepared by an admin. That link opens the app, and the person chooses a PIN before the workspace appears.
+There is no separate PIN setup screen. On an approved email's first sign-in, the six digits entered become that person's PIN; every later sign-in must match it. Because the team password is shared, have each person claim their email promptly.
 
 Deploy the function after changing it:
 

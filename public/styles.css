@@ -240,7 +240,6 @@ em{font-weight:600;color:var(--orange);font-style:normal}
 .auth-firsttime{font-size:10px;color:var(--ink-soft);max-width:450px;margin-top:23px;padding:15px 17px;background:var(--paper-deep);border-radius:18px 24px 16px 22px / 20px 16px 24px 18px;line-height:1.65}
 .auth-form input.pin-input{letter-spacing:.32em;font-size:24px}
 .auth-form input.pin-input::placeholder{letter-spacing:.28em;font-size:20px}
-.auth-copy>.underlined-action{margin-top:20px}
 .auth-art{height:430px;position:relative;display:grid;place-items:center}
 .auth-blob{width:360px;height:340px;background:var(--ink);color:var(--white);border-radius:55% 45% 48% 52% / 42% 57% 43% 58%;display:flex;flex-direction:column;justify-content:center;padding:55px;transform:rotate(4deg);box-shadow:16px 20px 0 var(--paper-deep);position:relative}
 .auth-blob>.small-flower{color:var(--yellow);width:52px;height:52px;margin-bottom:22px}
