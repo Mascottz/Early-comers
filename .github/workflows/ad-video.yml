@@ -45,22 +45,7 @@ jobs:
 
       - name: Render video
         working-directory: video
-        run: |
-          set -o pipefail
-          npm run render:ad 2>&1 | tee /tmp/render.log
-
-      - name: Publish render log on failure
-        if: failure()
-        run: |
-          mkdir -p video/out/debug
-          cp /tmp/render.log video/out/debug/render.log 2>/dev/null || echo "render log missing" > video/out/debug/render.log
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout --orphan ad-debug
-          git reset
-          git add -f video/out/debug
-          git commit -m "Ad render log"
-          git push --force origin ad-debug
+        run: npm run render:ad
 
       - name: Show output
         working-directory: video
