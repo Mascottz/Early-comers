@@ -38,8 +38,11 @@ jobs:
         working-directory: video
         run: |
           mkdir -p out/preview
-          for f in 60 195 315 445 549 674 789 884 1004; do
-            npx remotion still src/index.ts InstallVideo "out/preview/frame-$f.png" --frame=$f --image-format=png
+          for f in 60 315 884; do
+            npx remotion still src/index.ts InstallVideo "out/preview/install-$f.png" --frame=$f --image-format=png
+          done
+          for f in 40 200 352 570 823 923 1194 1430 1676 1975 2100; do
+            npx remotion still src/index.ts AdVideo "out/preview/ad-$f.png" --frame=$f --image-format=png
           done
 
       - name: Publish stills to preview branch
