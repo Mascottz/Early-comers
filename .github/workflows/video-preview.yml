@@ -2,6 +2,11 @@ name: Video preview stills
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'video/**'
+      - '.github/workflows/video-preview.yml'
 
 permissions:
   contents: write
@@ -33,7 +38,7 @@ jobs:
         working-directory: video
         run: |
           mkdir -p out/preview
-          for f in 40 120 200 260 320 400 500 600 700 780 860 940 1020; do
+          for f in 60 195 315 445 549 674 789 884 1004; do
             npx remotion still src/index.ts InstallVideo "out/preview/frame-$f.png" --frame=$f --image-format=png
           done
 
