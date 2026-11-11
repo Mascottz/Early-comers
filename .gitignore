@@ -10,3 +10,8 @@ __pycache__/
 .DS_Store
 .env
 public/runtime-config.js
+!video/public/fonts/
+!video/public/fonts/**
+video/node_modules/
+video/out/
+video/.remotion/

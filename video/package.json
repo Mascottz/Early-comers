@@ -1,0 +1,25 @@
+{
+  "name": "attendance-install-video",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Remotion explainer for installing Attendance by ProofsTech on iPhone and Android.",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "studio": "remotion studio src/index.ts",
+    "render": "remotion render src/index.ts InstallVideo out/attendance-install.mp4 --codec=h264 --crf=18",
+    "still": "remotion still src/index.ts InstallVideo out/poster.png --frame=100"
+  },
+  "dependencies": {
+    "@remotion/transitions": "4.0.542",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "remotion": "4.0.542"
+  },
+  "devDependencies": {
+    "@remotion/cli": "4.0.542",
+    "@sparticuz/chromium": "^153.0.0",
+    "@types/react": "18.3.12",
+    "@types/react-dom": "18.3.1",
+    "typescript": "5.8.3"
+  }
+}
