@@ -147,6 +147,8 @@ npm run render   # out/attendance-install.mp4
 
 The **Install video** workflow (`.github/workflows/install-video.yml`) renders the MP4 on every push to `main` that touches `video/`, and on manual dispatch. Each run uploads the file as the `attendance-install-video` artifact (kept 90 days) and refreshes the permanent download at [`releases/tag/install-video-latest`](https://github.com/Mascottz/Early-comers/releases/tag/install-video-latest).
 
+The same project also renders a narrated ~72 second brand ad (`AdVideo`): `npm run render:ad` locally, or the **Ad video** workflow, which publishes [`releases/tag/ad-video-latest`](https://github.com/Mascottz/Early-comers/releases/tag/ad-video-latest) and the `attendance-ad-video` artifact.
+
 Brand fonts are vendored in `video/public/fonts/` with their SIL Open Font License files, so the render needs no network access.
 
 ## Lateness and fines
