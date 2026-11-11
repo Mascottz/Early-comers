@@ -1,0 +1,40 @@
+
+> attendance-install-video@1.0.0 render:ad
+> remotion render src/index.ts AdVideo out/attendance-ad.mp4 --codec=h264 --crf=18
+
+Bundling 6%
+Bundling 21%
+Bundling 32%
+Bundling 43%
+Bundling 54%
+Bundling 65%
+Bundling 71%
+Bundling 76%
+Bundling 81%
+Bundling 87%
+Bundling 92%
+Bundling 98%
+Bundling 100%
+Getting composition
+⚡️ Cached bundle. Subsequent renders will be faster.
+[90mComposition          AdVideo[39m
+[90mCodec                h264[39m
+[90mOutput               out/attendance-ad.mp4[39m
+[90mConcurrency          2x[39m
+Rendered 0/2167
+Rendered 1/2167, time remaining: 11m 59s
+Rendered 2/2167, time remaining: 6m 16s
+Rendered 2/2167, time remaining: 6m 16s
+Rendered 2/2167, time remaining: 6m 16s
+Rendered 2/2167, time remaining: 6m 16s
+Rendered 2/2167, time remaining: 6m 16s
+
+[31mError: Error while downloading http://localhost:3000/public/audio/music-bed.wav: Error: Received a status code of 404 while downloading file http://localhost:3000/public/audio/music-bed.wav.[39m
+[31mThe response body was:[39m
+[31m---[39m
+[31m{"statusCode":404,"message":"The requested path (/tmp/remotion-webpack-bundle-iSAOtK/public/audio/music-bed.wav) could not be found"}[39m
+[31m---[39m
+[31m    at readFile (/home/runner/work/Early-comers/Early-comers/video/node_modules/@remotion/renderer/dist/assets/read-file.js:59:15)[39m
+[31m    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)[39m
+[31m    at /home/runner/work/Early-comers/Early-comers/video/node_modules/@remotion/renderer/dist/render-frame-with-option-to-reject.js:231:25[39m
+[31m    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)[39m
