@@ -123,6 +123,8 @@ type alias Model =
     , authPassword : String
     , authPin : String
     , authMessage : String
+    , showAuthPassword : Bool
+    , showAuthPin : Bool
     , refreshing : Bool
     , appOrigin : String
     , showInviteLink : Bool
@@ -155,6 +157,8 @@ type Msg
     | SetAuthEmail String
     | SetAuthPassword String
     | SetAuthPin String
+    | ToggleAuthPassword
+    | ToggleAuthPin
     | SignIn
     | SignInResult (Result Http.Error String)
     | AuthUserReceived (Result Http.Error AuthUser)

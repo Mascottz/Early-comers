@@ -119,6 +119,8 @@ init flags =
             , authPassword = ""
             , authPin = ""
             , authMessage = ""
+            , showAuthPassword = False
+            , showAuthPin = False
             , refreshing = False
             , appOrigin = flags.origin
             , showInviteLink = False
@@ -268,6 +270,12 @@ updateCore msg model =
 
         SetAuthPin value ->
             ( { model | authPin = onlyDigits 6 value, authMessage = "" }, Cmd.none )
+
+        ToggleAuthPassword ->
+            ( { model | showAuthPassword = not model.showAuthPassword }, Cmd.none )
+
+        ToggleAuthPin ->
+            ( { model | showAuthPin = not model.showAuthPin }, Cmd.none )
 
         SignIn ->
             case model.supabase of
@@ -718,6 +726,8 @@ signOut model =
         , authPassword = ""
         , authPin = ""
         , authMessage = ""
+        , showAuthPassword = False
+        , showAuthPin = False
         , currentWorkerId = ""
         , workers = []
         , entries = []
