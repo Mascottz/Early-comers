@@ -22,7 +22,7 @@ const FeatureScene: React.FC<FeatureSceneProps> = ({
   note,
 }) => {
   const frame = useCurrentFrame();
-  const progress = useSteadyProgress(0.0, 0.6);
+  const progress = useSteadyProgress(0, 0.98) * 0.55;
 
   const noteIn = note
     ? interpolate(frame, [note.at, note.at + 16], [0, 1], {

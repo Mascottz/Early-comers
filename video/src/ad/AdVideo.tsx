@@ -26,7 +26,7 @@ const MusicBed: React.FC = () => {
     [0, 0.5, 0.5, 0],
     { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' },
   );
-  return <Audio src={staticFile('audio/music-bed.wav')} volume={volume} />;
+  return <Audio src={staticFile('audio/music-bed.mp3')} volume={volume} />;
 };
 
 export const AdVideo: React.FC = () => (
