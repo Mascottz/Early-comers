@@ -255,12 +255,21 @@ updateCore msg model =
                 registerAttendance { model | scanStatus = ScanClosed }
 
             else
-                ( { model
-                    | scanStatus = ScanBlocked
-                    , scanMessage = "That QR is not the ProofsTech office pass. Find the printed office QR and try again."
-                  }
-                , stopScanner ()
-                )
+                let
+                    lowerValue =
+                        String.toLower value
+
+                    message =
+                        if String.contains "day=" lowerValue then
+                            "That office pass is from another day. Print today's pass and scan it again."
+
+                        else if String.contains (String.toLower model.officeCode) lowerValue then
+                            "That pass has no date. Print today's dated pass and scan it again."
+
+                        else
+                            "That QR is not the ProofsTech office pass. Find today's printed pass and try again."
+                in
+                ( { model | scanStatus = ScanBlocked, scanMessage = message }, stopScanner () )
 
         SetAuthEmail value ->
             ( { model | authEmail = value, authMessage = "" }, Cmd.none )
@@ -782,7 +791,12 @@ signInMessage error =
 
 validOfficeCode : Model -> String -> Bool
 validOfficeCode model value =
-    String.contains (String.toUpper model.officeCode) (String.toUpper (String.trim value))
+    let
+        upperValue =
+            String.toUpper (String.trim value)
+    in
+    String.contains (String.toUpper model.officeCode) upperValue
+        && String.contains ("DAY=" ++ String.toUpper model.today) upperValue
 
 
 friendlyCameraError : String -> String

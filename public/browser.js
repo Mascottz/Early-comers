@@ -122,12 +122,12 @@ app.ports.stopScanner.subscribe(async () => {
 
 app.ports.downloadQr.subscribe(async () => {
   try {
-    const response = await fetch('/api/qr.svg')
+    const response = await fetch(`/api/qr.svg?day=${localDate}`)
     const blob = await response.blob()
     const url = URL.createObjectURL(blob)
     const anchor = document.createElement('a')
     anchor.href = url
-    anchor.download = 'proofstech-office-qr.svg'
+    anchor.download = `proofstech-office-qr-${localDate}.svg`
     anchor.click()
     setTimeout(() => URL.revokeObjectURL(url), 1000)
   } catch (_) {

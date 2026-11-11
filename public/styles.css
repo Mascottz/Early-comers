@@ -192,7 +192,10 @@ em{font-weight:600;color:var(--orange);font-style:normal}
 .qr-brand{display:flex;align-items:center;gap:5px;position:relative;transform:rotate(-2deg);margin-top:2px}
 .qr-brand .brand-mark{width:29px;height:29px}
 .qr-brand strong{font-family:Bricolage,sans-serif;font-size:19px}
+.qr-shape-day{position:relative;transform:rotate(-2deg);margin-top:5px;font-size:8px;letter-spacing:.14em;color:var(--orange-dark)}
 .qr-studio>p{font-family:Bricolage,sans-serif;font-size:15px;margin:30px 0 18px}
+.qr-day{font-family:'DM Sans',sans-serif!important;font-size:10px!important;letter-spacing:.12em;text-transform:uppercase;color:var(--orange-dark);margin:18px 0 0!important}
+.qr-day+p{margin-top:6px!important}
 .qr-actions{display:flex;align-items:center;justify-content:center;gap:22px;flex-wrap:wrap}
 
 .profile-page{display:grid;grid-template-columns:.8fr 1.2fr;gap:100px;padding:70px 45px}

@@ -18,7 +18,7 @@ An offline-ready workplace attendance PWA for iPhone and desktop. The repository
 - Offline check-in, persistent local records, and synchronization after reconnecting
 - Shared daily wall with dates and arrival times
 - Staff directory and admin team creation in the local development service
-- Printable and downloadable office QR
+- Daily dated office QR, printable every morning
 - CSV attendance export
 - Installable iPhone PWA with local fonts and cached application assets
 - Staff portraits for Merciful, MD, Mascott, FundsTech, and IB China, with custom illustrations for everyone else
@@ -26,7 +26,7 @@ An offline-ready workplace attendance PWA for iPhone and desktop. The repository
 
 Admin access cannot be selected in the interface. Production admin status comes only from a verified email in the protected Supabase `admin_emails` table.
 
-The typed office-code fallback has been removed. A printed QR still can be photographed and reused, so this closes the easy code-sharing path rather than proving physical presence; rotating QR or location checks would be needed for stronger verification.
+The typed office-code fallback has been removed. The printed pass now carries the current Africa/Lagos date, so a pass from yesterday is rejected and a fresh one must be printed each morning. A photo of today's pass can still be used remotely, so daily rotation limits reuse but does not prove physical presence; a rotating on-screen pass or location checks would be needed for stronger verification.
 
 ## Local setup
 
@@ -133,6 +133,18 @@ Staff portraits live in `public/staff/` and are mapped by nickname in `src/Art.e
 5. Open Attendance from the home screen.
 
 After the first connected visit, the interface and saved records work offline. Camera scanning requires permission. Staff check-in is QR only; if camera access is denied, allow it in browser settings and scan the printed office QR again.
+
+## Daily office pass
+
+`/api/qr.svg` always generates the pass for the current date in Africa/Lagos. The payload looks like:
+
+```text
+proofstech://attendance?office=PROOFSTECH-HQ-2026&day=2026-11-11
+```
+
+The app accepts a pass only when both the office code and today's date match. Print a fresh pass from **Office QR** each morning and remove yesterday's sheet. If a pass is left up overnight, the next morning's scan is rejected with “That office pass is from another day.”
+
+`/api/qr.svg` is never cached by the service worker, and the Office QR image is requested with the current day, so a screen left open refreshes at midnight.
 
 ## Local configuration
 

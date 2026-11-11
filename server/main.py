@@ -7,8 +7,9 @@ import io
 import os
 import sqlite3
 import uuid
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import qrcode
 import qrcode.image.svg
@@ -22,6 +23,20 @@ DATA = ROOT / "data"
 DB = DATA / "attendance.db"
 PUBLIC = ROOT / "public"
 OFFICE_CODE = os.getenv("OFFICE_CODE", "PROOFSTECH-HQ-2026")
+try:
+    LAGOS = ZoneInfo("Africa/Lagos")
+except Exception:  # pragma: no cover
+    LAGOS = timezone(timedelta(hours=1))
+
+
+def lagos_today() -> date:
+    return datetime.now(LAGOS).date()
+
+
+def office_pass_payload(day: str | None = None) -> str:
+    value = day or lagos_today().isoformat()
+    return f"proofstech://attendance?office={OFFICE_CODE}&day={value}"
+
 
 app = FastAPI(title="Attendance by ProofsTech", version="1.0.0")
 
@@ -264,11 +279,15 @@ def invite_page() -> FileResponse:
 
 @app.get("/api/qr.svg")
 def office_qr() -> Response:
-    payload = f"proofstech://attendance?office={OFFICE_CODE}"
+    payload = office_pass_payload()
     image = qrcode.make(payload, image_factory=qrcode.image.svg.SvgPathImage, box_size=14)
     buffer = io.BytesIO()
     image.save(buffer)
-    return Response(buffer.getvalue(), media_type="image/svg+xml")
+    return Response(
+        buffer.getvalue(),
+        media_type="image/svg+xml",
+        headers={"Cache-Control": "no-store, max-age=0"},
+    )
 
 
 app.mount("/", StaticFiles(directory=PUBLIC, html=True), name="app")
