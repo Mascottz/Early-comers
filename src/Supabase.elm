@@ -74,25 +74,6 @@ authUserDecoder =
         (Decode.field "email" Decode.string)
 
 
-getAuthSettings : SupabaseConfig -> Cmd Msg
-getAuthSettings config =
-    Http.request
-        { method = "GET"
-        , headers = [ Http.header "apikey" config.key ]
-        , url = config.url ++ "/auth/v1/settings"
-        , body = Http.emptyBody
-        , expect = Http.expectJson GotAuthSettings authSettingsDecoder
-        , timeout = Nothing
-        , tracker = Nothing
-        }
-
-
-authSettingsDecoder : Decoder AuthSettings
-authSettingsDecoder =
-    Decode.maybe (Decode.at [ "external", "google" ] Decode.bool)
-        |> Decode.map (\enabled -> AuthSettings (Maybe.withDefault False enabled))
-
-
 refreshSession : SupabaseConfig -> Session -> Int -> Cmd Msg
 refreshSession config session nowSeconds =
     Http.request

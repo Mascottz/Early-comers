@@ -29,7 +29,6 @@ The device creates a stable attendance ID and records `occurred_at`, `local_date
 - Enable email.
 - Disable public signups.
 - Enable magic links.
-- Optionally enable Google and store its client ID and secret in Supabase Auth settings.
 - Add the production PWA URL to the allowed redirect URLs.
 - Use HTTPS in production so camera access, installation, and service workers work on iPhone.
 

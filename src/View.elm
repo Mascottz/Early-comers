@@ -58,18 +58,7 @@ authView model =
             [ div [ class "auth-copy" ]
                 [ p [ class "eyebrow" ] [ text "YOUR PLACE ON THE TEAM" ]
                 , h1 [] [ text "Your workday", br [] [], text "starts with ", em [] [ text "you." ] ]
-                , p [ class "auth-intro" ] [ text "Continue with Google, or use the Gmail address invited by ProofsTech to request a private sign-in link." ]
-                , if model.googleSignInEnabled && model.authStatus /= LinkSent then
-                    div [ class "google-signin" ]
-                        [ a [ class "google-button", href (googleAuthUrl model) ]
-                            [ span [ class "google-mark", attribute "aria-hidden" "true" ] [ text "G" ]
-                            , text "Continue with Google"
-                            ]
-                        , div [ class "auth-divider" ] [ span [] [ text "or use your invited email" ] ]
-                        ]
-
-                  else
-                    text ""
+                , p [ class "auth-intro" ] [ text "Use the Gmail address invited by ProofsTech to request a private sign-in link." ]
                 , if model.authStatus == LinkSent then
                     div [ class "link-sent" ]
                         [ smallFlower
@@ -717,23 +706,6 @@ styledProfileName name =
 onSubmitForm : Msg -> Attribute Msg
 onSubmitForm msg =
     preventDefaultOn "submit" (Decode.succeed ( msg, True ))
-
-
-googleAuthUrl : Model -> String
-googleAuthUrl model =
-    case model.supabase of
-        Just cloud ->
-            cloud.url ++ "/auth/v1/authorize?provider=google&redirect_to=" ++ encodeUrlPart model.appOrigin
-
-        Nothing ->
-            "#"
-
-
-encodeUrlPart : String -> String
-encodeUrlPart value =
-    value
-        |> String.replace ":" "%3A"
-        |> String.replace "/" "%2F"
 
 
 unique : List String -> List String

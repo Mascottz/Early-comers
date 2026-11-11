@@ -54,11 +54,6 @@ type alias AuthUser =
     }
 
 
-type alias AuthSettings =
-    { googleSignIn : Bool
-    }
-
-
 type alias Worker =
     { id : String
     , name : String
@@ -127,7 +122,6 @@ type alias Model =
     , authStatus : AuthStatus
     , authEmail : String
     , authMessage : String
-    , googleSignInEnabled : Bool
     , refreshing : Bool
     , appOrigin : String
     , showInviteLink : Bool
@@ -160,7 +154,6 @@ type Msg
     | SetAuthEmail String
     | SendMagicLink
     | MagicLinkResult (Result Http.Error ())
-    | GotAuthSettings (Result Http.Error AuthSettings)
     | AuthUserReceived (Result Http.Error AuthUser)
     | SessionRefreshed (Result Http.Error Session)
     | GotCloudWorkers (Result Http.Error (List Worker))

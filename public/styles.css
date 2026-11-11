@@ -236,13 +236,6 @@ em{font-weight:600;color:var(--orange);font-style:normal}
 .auth-intro{font-size:14px;color:var(--ink-soft);max-width:460px;margin-bottom:26px}
 .auth-form{max-width:450px}
 .auth-form .organic-button{margin-top:25px}
-.google-signin{max-width:450px;margin-bottom:4px}
-.google-button{display:flex;align-items:center;justify-content:center;gap:12px;min-height:52px;border:1px solid var(--ink);border-radius:48% 52% 43% 57% / 42% 51% 49% 58%;background:var(--white);font-size:12px;font-weight:500;transition:transform .2s,background .2s}
-.google-button:hover{transform:translateY(-2px) rotate(-.5deg);background:#f1ecdf}
-.google-mark{width:23px;height:23px;border-radius:50%;background:var(--ink);color:var(--white);display:grid;place-items:center;font-family:Bricolage,sans-serif;font-size:12px;font-weight:700;line-height:1}
-.auth-divider{display:flex;align-items:center;gap:13px;margin:22px 0;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft)}
-.auth-divider::before,.auth-divider::after{content:"";height:1px;background:var(--line);flex:1}
-.auth-divider span{flex:none}
 .auth-privacy{font-size:10px;color:var(--ink-soft);max-width:420px;margin-top:28px;padding-left:15px;border-left:2px solid var(--orange)}
 .auth-art{height:430px;position:relative;display:grid;place-items:center}
 .auth-blob{width:360px;height:340px;background:var(--ink);color:var(--white);border-radius:55% 45% 48% 52% / 42% 57% 43% 58%;display:flex;flex-direction:column;justify-content:center;padding:55px;transform:rotate(4deg);box-shadow:16px 20px 0 var(--paper-deep);position:relative}

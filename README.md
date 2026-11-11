@@ -12,7 +12,6 @@ An offline-ready workplace attendance PWA for iPhone and desktop. The repository
 ## What works
 
 - QR-only staff check-in, with no typed office-code fallback to share
-- Google sign-in when the Supabase Google provider is configured
 - Admin-prepared private invite links that sign a staff member in automatically without sending email
 - One check-in per worker per local day, including safe retries
 - Offline check-in, persistent local records, and synchronization after reconnecting
@@ -87,19 +86,6 @@ After the first deployment:
 2. Configure SMTP or the chosen email provider for reliable delivery.
 3. Apply the ProofsTech brand kit to the magic link email template.
 4. Test the production link on an installed iPhone PWA.
-
-## Google sign-in
-
-The sign-in page checks Supabase’s `/auth/v1/settings` and shows **Continue with Google** only when the Google provider reports as enabled.
-
-To turn it on:
-
-1. Create an OAuth client in Google Cloud Console.
-2. Use `https://gbkdxrbqkohfbscmooic.supabase.co/auth/v1/callback` as the authorized redirect URI.
-3. In Supabase, open Authentication → Providers → Google and save the client ID and secret.
-4. Keep `https://earlycomers.vercel.app` in the allowed redirect URLs.
-
-The client secret belongs in Supabase Auth settings, never in this repository or the browser bundle.
 
 ## Private invite links
 

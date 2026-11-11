@@ -113,7 +113,6 @@ init flags =
                         RestoringSession
             , authEmail = ""
             , authMessage = ""
-            , googleSignInEnabled = False
             , refreshing = False
             , appOrigin = flags.origin
             , showInviteLink = False
@@ -154,16 +153,8 @@ init flags =
 
                 _ ->
                     Cmd.none
-
-        settingsCommand =
-            case ( config, flags.online ) of
-                ( Just cloud, True ) ->
-                    Supabase.getAuthSettings cloud
-
-                _ ->
-                    Cmd.none
     in
-    ( model, Cmd.batch [ Task.perform SetZone Time.here, initialCommand, settingsCommand ] )
+    ( model, Cmd.batch [ Task.perform SetZone Time.here, initialCommand ] )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -283,14 +274,6 @@ updateCore msg model =
                     else
                         ( { model | authMessage = "Enter your invited email address." }, Cmd.none )
 
-        GotAuthSettings result ->
-            case result of
-                Ok settings ->
-                    ( { model | googleSignInEnabled = settings.googleSignIn }, Cmd.none )
-
-                Err _ ->
-                    ( { model | googleSignInEnabled = False }, Cmd.none )
-
         MagicLinkResult result ->
             case result of
                 Ok _ ->
@@ -397,20 +380,11 @@ updateCore msg model =
             signOut model
 
         OnlineChanged online ->
-            let
-                settingsCommand =
-                    case ( online, model.supabase, model.authStatus ) of
-                        ( True, Just cloud, SignedOut ) ->
-                            Supabase.getAuthSettings cloud
-
-                        _ ->
-                            Cmd.none
-            in
             ( { model | online = online }
             , if online then
                 case model.supabase of
                     Just _ ->
-                        Cmd.batch (settingsCommand :: cloudFetch model :: List.map (cloudCheckIn model) (pendingEntries model))
+                        Cmd.batch (cloudFetch model :: List.map (cloudCheckIn model) (pendingEntries model))
 
                     Nothing ->
                         Cmd.batch (Api.getState :: List.map Api.checkIn (pendingEntries model))
