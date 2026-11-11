@@ -134,6 +134,12 @@ Staff portraits live in `public/staff/` and are mapped by nickname in `src/Art.e
 
 After the first connected visit, the interface and saved records work offline. Camera scanning requires permission. Staff check-in is QR only; if camera access is denied, allow it in browser settings and scan the printed office QR again.
 
+## Lateness and fines
+
+The grace period ends at **09:30** local time. A check-in at 09:30 is on time; 09:31 onward is late.
+
+Each late day carries a **₦2,000 fine**. Because attendance allows only one check-in per worker per day, the maximum is one fine per late day. The home summary, the daily wall, and the CSV export all show the status and fine.
+
 ## Daily office pass
 
 ProofsTech HQ is in Abuja, Nigeria. The office pass uses the Africa/Lagos timezone (WAT, UTC+1), which is the correct timezone identifier for Nigeria.

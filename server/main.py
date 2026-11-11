@@ -23,6 +23,8 @@ DATA = ROOT / "data"
 DB = DATA / "attendance.db"
 PUBLIC = ROOT / "public"
 OFFICE_CODE = os.getenv("OFFICE_CODE", "PROOFSTECH-HQ-2026")
+LATE_GRACE = "09:30"
+LATE_FINE = 2000
 try:
     LAGOS = ZoneInfo("Africa/Lagos")
 except Exception:  # pragma: no cover
@@ -248,8 +250,7 @@ def create_worker(worker: NewWorker) -> dict:
     return worker_dict(row)
 
 
-@app.get("/api/export.csv")
-def export_csv() -> StreamingResponse:
+def export_csv_text() -> str:
     with connect() as db:
         rows = db.execute(
             """SELECT workers.name, workers.title, entries.work_date,
@@ -259,15 +260,22 @@ def export_csv() -> StreamingResponse:
         ).fetchall()
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["Name", "Role", "Date", "Time", "Source"])
+    writer.writerow(["Name", "Role", "Date", "Time", "Source", "Status", "Fine (NGN)"])
     for row in rows:
+        clock = row["clock"] or datetime.fromtimestamp(row["occurred_at"] / 1000).strftime("%H:%M")
+        late = clock > LATE_GRACE
         writer.writerow([
-            row["name"], row["title"], row["work_date"],
-            row["clock"] or datetime.fromtimestamp(row["occurred_at"] / 1000).strftime("%H:%M"),
-            row["source"],
+            row["name"], row["title"], row["work_date"], clock, row["source"],
+            "Late" if late else "On time",
+            LATE_FINE if late else 0,
         ])
+    return output.getvalue()
+
+
+@app.get("/api/export.csv")
+def export_csv() -> StreamingResponse:
     return StreamingResponse(
-        iter([output.getvalue()]), media_type="text/csv",
+        iter([export_csv_text()]), media_type="text/csv",
         headers={"Content-Disposition": "attachment; filename=attendance.csv"},
     )
 

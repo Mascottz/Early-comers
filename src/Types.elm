@@ -309,9 +309,53 @@ greeting model =
         "Good evening"
 
 
+lateGrace : String
+lateGrace =
+    "09:30"
+
+
+lateFine : Int
+lateFine =
+    2000
+
+
 isLate : Entry -> Bool
 isLate entry =
-    entry.time > "09:00"
+    entry.time > lateGrace
+
+
+lateCount : List Entry -> Int
+lateCount entries =
+    List.length (List.filter isLate entries)
+
+
+lateFineTotal : List Entry -> Int
+lateFineTotal entries =
+    lateCount entries * lateFine
+
+
+formatNaira : Int -> String
+formatNaira amount =
+    let
+        groups =
+            amount
+                |> String.fromInt
+                |> String.reverse
+                |> String.toList
+                |> chunk 3
+                |> List.map (String.fromList >> String.reverse)
+                |> List.reverse
+    in
+    "₦" ++ String.join "," groups
+
+
+chunk : Int -> List a -> List (List a)
+chunk size items =
+    if List.isEmpty items then
+        []
+
+    else
+        List.take size items :: chunk size (List.drop size items)
 
 
 pendingEntries : Model -> List Entry
