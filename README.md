@@ -136,6 +136,8 @@ After the first connected visit, the interface and saved records work offline. C
 
 ## Daily office pass
 
+ProofsTech HQ is in Abuja, Nigeria. The office pass uses the Africa/Lagos timezone (WAT, UTC+1), which is the correct timezone identifier for Nigeria.
+
 `/api/qr.svg` always generates the pass for the current date in Africa/Lagos. The payload looks like:
 
 ```text
