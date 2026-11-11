@@ -27,8 +27,7 @@ type ScanStatus
 
 type AuthStatus
     = SignedOut
-    | SendingLink
-    | LinkSent
+    | SigningIn
     | RestoringSession
     | Authenticated
 
@@ -83,6 +82,12 @@ type alias State =
     }
 
 
+type alias InviteResult =
+    { worker : Worker
+    , inviteLink : String
+    }
+
+
 type alias Toast =
     { message : String
     , detail : String
@@ -115,9 +120,14 @@ type alias Model =
     , session : Maybe Session
     , authStatus : AuthStatus
     , authEmail : String
+    , authPassword : String
+    , authPin : String
     , authMessage : String
     , refreshing : Bool
     , appOrigin : String
+    , showInviteLink : Bool
+    , inviteLink : String
+    , inviteLinkName : String
     }
 
 
@@ -143,8 +153,10 @@ type Msg
     | ScanDecoded String
     | OnlineChanged Bool
     | SetAuthEmail String
-    | SendMagicLink
-    | MagicLinkResult (Result Http.Error ())
+    | SetAuthPassword String
+    | SetAuthPin String
+    | SignIn
+    | SignInResult (Result Http.Error String)
     | AuthUserReceived (Result Http.Error AuthUser)
     | SessionRefreshed (Result Http.Error Session)
     | GotCloudWorkers (Result Http.Error (List Worker))
@@ -164,6 +176,12 @@ type Msg
     | SetNewWorkerNickname String
     | SubmitWorker
     | WorkerCreated (Result Http.Error Worker)
+    | InviteCreated (Result Http.Error InviteResult)
+    | PrepareInviteLink Worker
+    | InviteLinkPrepared (Result Http.Error InviteResult)
+    | CloseInviteLink
+    | CopyInviteLink
+    | InviteLinkCopied Bool
     | DownloadQr
     | PrintQr
     | ExportRecords

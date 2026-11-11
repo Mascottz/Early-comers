@@ -194,3 +194,208 @@ begin
   end if;
 end;
 $$;
+
+-- ---------------------------------------------------------------------------
+-- Sign-in: approved email + shared team password + personal six-digit PIN
+-- ---------------------------------------------------------------------------
+-- The shared team password lives only in the `TEAM_ACCESS_PASSWORD` edge
+-- function secret. It is checked by `pin-auth`; the PIN is hashed here.
+
+create table public.staff_pins (
+  worker_id uuid primary key references public.staff_profiles(id) on delete cascade,
+  pin_hash text not null,
+  failed_attempts integer not null default 0,
+  locked_until timestamptz,
+  updated_at timestamptz not null default now()
+);
+
+create table public.auth_throttle (
+  key text primary key,
+  failures integer not null default 0,
+  window_start timestamptz not null default now(),
+  blocked_until timestamptz
+);
+
+alter table public.staff_pins enable row level security;
+alter table public.auth_throttle enable row level security;
+revoke all on public.staff_pins from anon, authenticated;
+revoke all on public.auth_throttle from anon, authenticated;
+
+-- Server-only. Called by `pin-auth` on a first sign-in to claim the email.
+create or replace function public.set_staff_pin_for_email(p_email text, p_pin text)
+returns boolean
+language plpgsql
+security definer
+set search_path to 'public', 'extensions', 'pg_temp'
+as $$
+declare
+  profile public.staff_profiles;
+begin
+  if p_pin !~ '^[0-9]{6}$' then
+    raise exception 'PIN must be exactly six digits';
+  end if;
+
+  select * into profile
+  from public.staff_profiles
+  where lower(email) = lower(trim(p_email)) and active = true;
+
+  if profile.id is null then
+    return false;
+  end if;
+
+  insert into public.staff_pins(worker_id, pin_hash, failed_attempts, locked_until, updated_at)
+  values (profile.id, crypt(p_pin, gen_salt('bf', 10)), 0, null, now())
+  on conflict (worker_id) do update
+    set pin_hash = excluded.pin_hash,
+        failed_attempts = 0,
+        locked_until = null,
+        updated_at = now();
+  return true;
+end;
+$$;
+
+-- Server-only. Called by the `pin-auth` edge function with the service role.
+create or replace function public.verify_staff_pin(p_email text, p_pin text)
+returns jsonb
+language plpgsql
+security definer
+set search_path to 'public', 'extensions', 'pg_temp'
+as $$
+declare
+  profile public.staff_profiles;
+  stored public.staff_pins;
+  next_failures integer;
+begin
+  select * into profile
+  from public.staff_profiles
+  where lower(email) = lower(trim(p_email)) and active = true;
+
+  if profile.id is null then
+    return jsonb_build_object('status', 'email_not_allowed');
+  end if;
+
+  select * into stored
+  from public.staff_pins
+  where worker_id = profile.id
+  for update;
+
+  if stored.worker_id is null then
+    return jsonb_build_object('status', 'pin_not_set');
+  end if;
+
+  if stored.locked_until is not null and stored.locked_until > now() then
+    return jsonb_build_object(
+      'status', 'locked',
+      'retry_after', ceil(extract(epoch from (stored.locked_until - now())))::int
+    );
+  end if;
+
+  if stored.locked_until is not null then
+    update public.staff_pins
+    set failed_attempts = 0, locked_until = null
+    where worker_id = profile.id;
+    stored.failed_attempts := 0;
+    stored.locked_until := null;
+  end if;
+
+  if stored.pin_hash = crypt(p_pin, stored.pin_hash) then
+    update public.staff_pins
+    set failed_attempts = 0, locked_until = null
+    where worker_id = profile.id;
+    return jsonb_build_object('status', 'ok');
+  end if;
+
+  next_failures := stored.failed_attempts + 1;
+  if next_failures >= 5 then
+    update public.staff_pins
+    set failed_attempts = 0, locked_until = now() + interval '15 minutes'
+    where worker_id = profile.id;
+    return jsonb_build_object('status', 'locked', 'retry_after', 900);
+  end if;
+
+  update public.staff_pins
+  set failed_attempts = next_failures
+  where worker_id = profile.id;
+  return jsonb_build_object('status', 'invalid', 'attempts_left', 5 - next_failures);
+end;
+$$;
+
+-- Server-only throttle helpers. Called only by the `pin-auth` edge function.
+create or replace function public.check_auth_throttle(p_key text)
+returns jsonb
+language plpgsql
+security definer
+set search_path to 'public', 'pg_temp'
+as $$
+declare
+  throttle public.auth_throttle;
+begin
+  select * into throttle from public.auth_throttle where key = p_key;
+  if throttle.key is null then
+    return jsonb_build_object('blocked', false);
+  end if;
+  if throttle.blocked_until is not null and throttle.blocked_until > now() then
+    return jsonb_build_object(
+      'blocked', true,
+      'retry_after', ceil(extract(epoch from (throttle.blocked_until - now())))::int
+    );
+  end if;
+  return jsonb_build_object('blocked', false);
+end;
+$$;
+
+create or replace function public.record_auth_failure(p_key text)
+returns jsonb
+language plpgsql
+security definer
+set search_path to 'public', 'pg_temp'
+as $$
+declare
+  throttle public.auth_throttle;
+  next_failures integer;
+begin
+  select * into throttle from public.auth_throttle where key = p_key for update;
+
+  if throttle.key is null or throttle.window_start < now() - interval '15 minutes' then
+    insert into public.auth_throttle(key, failures, window_start, blocked_until)
+    values (p_key, 1, now(), null)
+    on conflict (key) do update
+      set failures = 1, window_start = now(), blocked_until = null;
+    return jsonb_build_object('blocked', false, 'failures', 1);
+  end if;
+
+  next_failures := throttle.failures + 1;
+  if next_failures >= 10 then
+    update public.auth_throttle
+    set failures = 0, window_start = now(), blocked_until = now() + interval '15 minutes'
+    where key = p_key;
+    return jsonb_build_object('blocked', true, 'retry_after', 900);
+  end if;
+
+  update public.auth_throttle set failures = next_failures where key = p_key;
+  return jsonb_build_object('blocked', false, 'failures', next_failures);
+end;
+$$;
+
+create or replace function public.clear_auth_failures(p_key text)
+returns boolean
+language plpgsql
+security definer
+set search_path to 'public', 'pg_temp'
+as $$
+begin
+  delete from public.auth_throttle where key = p_key;
+  return true;
+end;
+$$;
+
+revoke all on function public.set_staff_pin_for_email(text, text) from public, anon, authenticated;
+revoke all on function public.verify_staff_pin(text, text) from public, anon, authenticated;
+revoke all on function public.check_auth_throttle(text) from public, anon, authenticated;
+revoke all on function public.record_auth_failure(text) from public, anon, authenticated;
+revoke all on function public.clear_auth_failures(text) from public, anon, authenticated;
+grant execute on function public.set_staff_pin_for_email(text, text) to service_role;
+grant execute on function public.verify_staff_pin(text, text) to service_role;
+grant execute on function public.check_auth_throttle(text) to service_role;
+grant execute on function public.record_auth_failure(text) to service_role;
+grant execute on function public.clear_auth_failures(text) to service_role;

@@ -63,6 +63,13 @@ class AttendanceTests(unittest.TestCase):
         self.assertEqual(worker["initials"], "AO")
         self.assertEqual(len(main.state()["workers"]), 9)
 
+    def test_invite_page_is_available_and_private(self):
+        response = main.invite_page()
+        self.assertEqual(Path(response.path).name, "invite.html")
+        page = (main.PUBLIC / "invite.html").read_text(encoding="utf-8")
+        self.assertIn("/auth/v1/verify", page)
+        self.assertIn('name="referrer" content="no-referrer"', page)
+
 
 if __name__ == "__main__":
     unittest.main()

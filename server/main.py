@@ -13,7 +13,7 @@ from pathlib import Path
 import qrcode
 import qrcode.image.svg
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import Response, StreamingResponse
+from fastapi.responses import FileResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -255,6 +255,11 @@ def export_csv() -> StreamingResponse:
         iter([output.getvalue()]), media_type="text/csv",
         headers={"Content-Disposition": "attachment; filename=attendance.csv"},
     )
+
+
+@app.get("/invite")
+def invite_page() -> FileResponse:
+    return FileResponse(PUBLIC / "invite.html")
 
 
 @app.get("/api/qr.svg")

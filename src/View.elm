@@ -15,10 +15,7 @@ view model =
         ( Just _, SignedOut ) ->
             authView model
 
-        ( Just _, SendingLink ) ->
-            authView model
-
-        ( Just _, LinkSent ) ->
+        ( Just _, SigningIn ) ->
             authView model
 
         ( Just _, RestoringSession ) ->
@@ -33,6 +30,7 @@ view model =
                 , scannerView model
                 , installView model
                 , addWorkerView model
+                , inviteLinkView model
                 , toastView model.toast
                 ]
 
@@ -46,51 +44,96 @@ authLoading =
         ]
 
 
+authTop : Html Msg
+authTop =
+    div [ class "auth-top" ]
+        [ div [ class "auth-brand" ] [ brandMark, strong [] [ text "attendance" ], small [] [ text "by ProofsTech" ] ]
+        , span [] [ text "LAGOS, NIGERIA" ]
+        ]
+
+
+authArt : Html Msg
+authArt =
+    div [ class "auth-art" ]
+        [ orbitSketch
+        , div [ class "auth-blob" ]
+            [ smallFlower
+            , h2 [] [ text "Show up.", br [] [], em [] [ text "Belong." ] ]
+            , p [] [ text "One shared morning for the people who make ProofsTech." ]
+            ]
+        , div [ class "aka-note" ] [ text "IB China, Merciful, FundsTech, Mascott, MD, ProofsTech" ]
+        ]
+
+
 authView : Model -> Html Msg
 authView model =
     div [ class "auth-page" ]
-        [ div [ class "auth-top" ]
-            [ div [ class "auth-brand" ] [ brandMark, strong [] [ text "attendance" ], small [] [ text "by ProofsTech" ] ]
-            , span [] [ text "LAGOS, NIGERIA" ]
-            ]
+        [ authTop
         , div [ class "auth-layout" ]
             [ div [ class "auth-copy" ]
                 [ p [ class "eyebrow" ] [ text "YOUR PLACE ON THE TEAM" ]
                 , h1 [] [ text "Your workday", br [] [], text "starts with ", em [] [ text "you." ] ]
-                , p [ class "auth-intro" ] [ text "Use the Gmail address invited by ProofsTech. We’ll send a private link to open your workspace." ]
-                , if model.authStatus == LinkSent then
-                    div [ class "link-sent" ]
-                        [ smallFlower
-                        , h2 [] [ text "Check your inbox." ]
-                        , p [] [ text ("We sent your sign-in link to " ++ String.trim model.authEmail ++ ". Open it on this device and you’ll come right back here.") ]
-                        , button [ class "underlined-action", onClick (SendMagicLink) ] [ text "Send the link again" ]
+                , p [ class "auth-intro" ] [ text "Sign in with the Gmail address on your staff profile, the ProofsTech team password, and your own six-digit PIN." ]
+                , Html.form [ class "auth-form", onSubmitForm SignIn ]
+                    [ label [ for "staff-email" ] [ text "APPROVED EMAIL" ]
+                    , input
+                        [ id "staff-email"
+                        , type_ "email"
+                        , value model.authEmail
+                        , onInput SetAuthEmail
+                        , placeholder "you@gmail.com"
+                        , attribute "autocomplete" "email"
+                        , attribute "inputmode" "email"
+                        , autofocus (model.authStatus == SignedOut)
                         ]
-
-                  else
-                    Html.form [ class "auth-form", onSubmitForm SendMagicLink ]
-                        [ label [ for "staff-email" ] [ text "YOUR INVITED EMAIL" ]
-                        , input [ id "staff-email", type_ "email", value model.authEmail, onInput SetAuthEmail, placeholder "you@gmail.com", autocomplete True, autofocus True ] []
-                        , if model.authMessage /= "" then
-                            p [ class "form-error" ] [ text model.authMessage ]
-
-                          else
-                            text ""
-                        , button [ class "organic-button primary-button compact", type_ "submit" ]
-                            [ text (if model.authStatus == SendingLink then "Sending your link…" else "Send my sign-in link ")
-                            , span [ class "arrow-mark" ] []
-                            ]
+                        []
+                    , label [ for "staff-password" ] [ text "TEAM PASSWORD" ]
+                    , input
+                        [ id "staff-password"
+                        , type_ "password"
+                        , value model.authPassword
+                        , onInput SetAuthPassword
+                        , placeholder "Shared by ProofsTech"
+                        , attribute "autocomplete" "current-password"
                         ]
-                , p [ class "auth-privacy" ] [ text "Only invited staff can enter. Admin access comes from your verified email, never a setting on your phone." ]
-                ]
-            , div [ class "auth-art" ]
-                [ orbitSketch
-                , div [ class "auth-blob" ]
-                    [ smallFlower
-                    , h2 [] [ text "Show up.", br [] [], em [] [ text "Belong." ] ]
-                    , p [] [ text "One shared morning for the people who make ProofsTech." ]
+                        []
+                    , label [ for "staff-pin" ] [ text "YOUR SIX-DIGIT PIN" ]
+                    , input
+                        [ id "staff-pin"
+                        , type_ "password"
+                        , value model.authPin
+                        , onInput SetAuthPin
+                        , placeholder "••••••"
+                        , attribute "inputmode" "numeric"
+                        , attribute "maxlength" "6"
+                        , attribute "pattern" "[0-9]{6}"
+                        , attribute "autocomplete" "off"
+                        ]
+                        []
+                    , if model.authMessage /= "" then
+                        p [ class "form-error" ] [ text model.authMessage ]
+
+                      else
+                        text ""
+                    , button
+                        [ class "organic-button primary-button compact"
+                        , type_ "submit"
+                        , disabled (model.authStatus == SigningIn)
+                        ]
+                        [ text
+                            (if model.authStatus == SigningIn then
+                                "Opening your session…"
+
+                             else
+                                "Sign in "
+                            )
+                        , span [ class "arrow-mark" ] []
+                        ]
                     ]
-                , div [ class "aka-note" ] [ text "IB China, Merciful, FundsTech, Mascott, MD, ProofsTech" ]
+                , p [ class "auth-firsttime" ] [ text "First time here? The six digits you enter become your PIN. After that, the same email, team password, and PIN open your workspace." ]
+                , p [ class "auth-privacy" ] [ text "Only approved staff emails can sign in. Admin access comes from your verified email, never a setting on your phone." ]
                 ]
+            , authArt
             ]
         , div [ class "auth-footer" ] [ text "Simple attendance, even on no data days." ]
         ]
@@ -465,6 +508,11 @@ teamMember model worker =
         , div [ class "team-arrival" ]
             [ small [] [ text "TODAY" ]
             , strong [] [ text (Maybe.map .time arrival |> Maybe.withDefault "Not in yet") ]
+            , if model.role == AdminView then
+                button [ class "invite-link-action", onClick (PrepareInviteLink worker) ] [ text "Prepare link" ]
+
+              else
+                text ""
             ]
         ]
 
@@ -640,8 +688,32 @@ addWorkerView model =
 
                       else
                         text ""
-                    , button [ class "organic-button primary-button compact", type_ "submit" ] [ text "Create staff profile" ]
+                    , button [ class "organic-button primary-button compact", type_ "submit" ] [ text "Create profile & prepare link" ]
                     ]
+                ]
+            ]
+
+
+inviteLinkView : Model -> Html Msg
+inviteLinkView model =
+    if not model.showInviteLink then
+        text ""
+
+    else
+        div [ class "overlay", attribute "role" "dialog", attribute "aria-modal" "true", attribute "aria-label" "Private invite link" ]
+            [ div [ class "organic-modal invite-modal" ]
+                [ div [ class "modal-heading" ]
+                    [ p [ class "eyebrow" ] [ text "PRIVATE SIGN-IN LINK" ]
+                    , button [ class "close-action", onClick CloseInviteLink ] [ text "Close" ]
+                    ]
+                , h2 [] [ text ("Ready for " ++ model.inviteLinkName ++ ".") ]
+                , p [] [ text ("This link signs " ++ model.inviteLinkName ++ " in automatically when opened. Nothing has been emailed or sent.") ]
+                , input [ class "invite-link-field", value model.inviteLink, readonly True, attribute "aria-label" "Private invite link", autocomplete False ] []
+                , div [ class "invite-link-actions" ]
+                    [ button [ class "organic-button primary-button compact", onClick CopyInviteLink ] [ text "Copy link" ]
+                    , button [ class "text-action", onClick CloseInviteLink ] [ text "Done" ]
+                    ]
+                , p [ class "invite-link-footnote" ] [ text "The link is single use and expires after one hour. Send it privately to the right person." ]
                 ]
             ]
 

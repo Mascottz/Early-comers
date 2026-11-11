@@ -35,20 +35,21 @@ sessionDecoder =
         (Decode.at [ "user", "email" ] Decode.string)
 
 
-sendMagicLink : SupabaseConfig -> String -> String -> Cmd Msg
-sendMagicLink config email redirectTo =
+pinSignIn : SupabaseConfig -> String -> String -> String -> String -> Cmd Msg
+pinSignIn config email password pin redirectTo =
     Http.request
         { method = "POST"
         , headers = [ Http.header "apikey" config.key ]
-        , url = config.url ++ "/auth/v1/otp"
+        , url = config.url ++ "/functions/v1/pin-auth"
         , body =
             Http.jsonBody <|
                 Encode.object
                     [ ( "email", Encode.string email )
-                    , ( "create_user", Encode.bool False )
-                    , ( "options", Encode.object [ ( "email_redirect_to", Encode.string redirectTo ) ] )
+                    , ( "password", Encode.string password )
+                    , ( "pin", Encode.string pin )
+                    , ( "redirect_to", Encode.string redirectTo )
                     ]
-        , expect = Http.expectWhatever MagicLinkResult
+        , expect = Http.expectJson SignInResult (Decode.field "invite_link" Decode.string)
         , timeout = Nothing
         , tracker = Nothing
         }
@@ -221,8 +222,8 @@ pad value =
     String.padLeft 2 '0' (String.fromInt value)
 
 
-inviteWorker : SupabaseConfig -> Session -> String -> String -> String -> String -> Cmd Msg
-inviteWorker config session fullName email nickname title =
+inviteWorker : SupabaseConfig -> Session -> String -> String -> String -> String -> String -> Cmd Msg
+inviteWorker config session fullName email nickname title redirectTo =
     Http.request
         { method = "POST"
         , headers = authHeaders config session
@@ -234,11 +235,38 @@ inviteWorker config session fullName email nickname title =
                     , ( "email", Encode.string (String.toLower (String.trim email)) )
                     , ( "nickname", Encode.string (String.trim nickname) )
                     , ( "title", Encode.string (String.trim title) )
+                    , ( "redirect_to", Encode.string redirectTo )
                     ]
-        , expect = Http.expectJson WorkerCreated workerDecoder
+        , expect = Http.expectJson InviteCreated inviteResultDecoder
         , timeout = Nothing
         , tracker = Nothing
         }
+
+
+prepareInviteLink : SupabaseConfig -> Session -> String -> String -> Cmd Msg
+prepareInviteLink config session workerId redirectTo =
+    Http.request
+        { method = "POST"
+        , headers = authHeaders config session
+        , url = config.url ++ "/functions/v1/invite-staff"
+        , body =
+            Http.jsonBody <|
+                Encode.object
+                    [ ( "action", Encode.string "link" )
+                    , ( "worker_id", Encode.string workerId )
+                    , ( "redirect_to", Encode.string redirectTo )
+                    ]
+        , expect = Http.expectJson InviteLinkPrepared inviteResultDecoder
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
+inviteResultDecoder : Decoder InviteResult
+inviteResultDecoder =
+    Decode.map2 InviteResult
+        workerDecoder
+        (Decode.field "invite_link" Decode.string)
 
 
 authHeaders : SupabaseConfig -> Session -> List Http.Header
