@@ -197,9 +197,15 @@ appHeader model =
         , nav [ class "desktop-nav", attribute "aria-label" "Main navigation" ]
             [ navItem model Home "Today"
             , navItem model Wall "Daily wall"
+            , button
+                [ class "nav-link nav-scan-link"
+                , onClick OpenScanner
+                , attribute "aria-label" "Scan the office QR"
+                ]
+                [ text "Scan" ]
             , navItem model Team "Team"
             , if model.role == AdminView then
-                navItem model Office "QR studio"
+                navItem model Office "Office QR"
 
               else
                 text ""
@@ -291,7 +297,7 @@ homeView model =
                     ]
                 , div [ class "hero-actions" ]
                     [ if model.role == AdminView then
-                        button [ class "organic-button primary-button", onClick (Navigate Office) ] [ text "Open QR studio ", span [ class "arrow-mark" ] [] ]
+                        button [ class "organic-button primary-button", onClick (Navigate Office) ] [ text "Office QR ", span [ class "arrow-mark" ] [] ]
 
                       else
                         case ownEntry of

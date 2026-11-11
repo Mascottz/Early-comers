@@ -53,6 +53,8 @@ em{font-weight:600;color:var(--orange);font-style:normal}
 .nav-link::after{content:"";position:absolute;bottom:25px;left:50%;width:0;height:2px;background:var(--orange);transform:translateX(-50%) rotate(-4deg);transition:width .25s}
 .nav-link:hover,.nav-link.active{color:var(--ink)}
 .nav-link.active::after{width:100%}
+.nav-scan-link{color:var(--orange-dark)}
+.nav-scan-link:hover{color:var(--ink)}
 .profile-trigger{display:flex;align-items:center;gap:11px;padding:0}
 .profile-copy{text-align:right;display:flex;flex-direction:column}
 .profile-copy strong{font-size:13px;font-weight:500}

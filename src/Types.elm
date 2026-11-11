@@ -141,6 +141,7 @@ type alias Flags =
     , session : Maybe String
     , supabaseUrl : String
     , supabaseKey : String
+    , officeCode : String
     , origin : String
     }
 
