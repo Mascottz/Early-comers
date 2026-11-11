@@ -1,0 +1,48 @@
+name: Video preview stills
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  stills:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: video/package-lock.json
+
+      - name: Install dependencies
+        working-directory: video
+        run: npm ci
+
+      - name: Install headless Chrome
+        working-directory: video
+        run: npx remotion browser ensure
+
+      - name: Render stills
+        working-directory: video
+        run: |
+          mkdir -p out/preview
+          for f in 40 120 200 260 320 400 500 600 700 780 860 940 1020; do
+            npx remotion still src/index.ts InstallVideo "out/preview/frame-$f.png" --frame=$f --image-format=png
+          done
+
+      - name: Publish stills to preview branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan video-preview
+          git reset
+          git add -f video/out/preview
+          git commit -m "Video preview stills"
+          git push --force origin video-preview
