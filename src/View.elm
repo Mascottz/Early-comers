@@ -48,7 +48,7 @@ authTop : Html Msg
 authTop =
     div [ class "auth-top" ]
         [ div [ class "auth-brand" ] [ brandMark, strong [] [ text "attendance" ], small [] [ text "by ProofsTech" ] ]
-        , span [] [ text "LAGOS, NIGERIA" ]
+        , span [] [ text "ABUJA, NIGERIA" ]
         ]
 
 
@@ -557,7 +557,7 @@ officeView : Model -> Html Msg
 officeView model =
     div [ class "page office-page" ]
         [ div [ class "office-copy" ]
-            [ p [ class "eyebrow" ] [ text "PROOFSTECH HQ, LAGOS" ]
+            [ p [ class "eyebrow" ] [ text "PROOFSTECH HQ, ABUJA" ]
             , h1 [] [ text "One scan.", br [] [], em [] [ text "Every arrival." ] ]
             , p [ class "office-intro" ] [ text "Print today's pass each morning and place it at the entrance. It stops working at midnight." ]
             , div [ class "office-steps" ]
