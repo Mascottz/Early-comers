@@ -90,30 +90,6 @@ app.ports.stopScanner.subscribe(async () => {
   scanner = null
 })
 
-app.ports.copyText.subscribe(async text => {
-  try {
-    await navigator.clipboard.writeText(text)
-    app.ports.scannerMessage.send('copied')
-  } catch (_) {
-    app.ports.scannerMessage.send('copy-error')
-  }
-})
-
-app.ports.shareOffice.subscribe(async text => {
-  if (navigator.share) {
-    try {
-      await navigator.share({ title: 'ProofsTech office attendance', text })
-    } catch (_) {}
-  } else {
-    try {
-      await navigator.clipboard.writeText(text)
-      app.ports.scannerMessage.send('copied')
-    } catch (_) {
-      app.ports.scannerMessage.send('copy-error')
-    }
-  }
-})
-
 app.ports.downloadQr.subscribe(async () => {
   try {
     const response = await fetch('/api/qr.svg')

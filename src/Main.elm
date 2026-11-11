@@ -21,12 +21,6 @@ port startScanner : () -> Cmd msg
 port stopScanner : () -> Cmd msg
 
 
-port copyText : String -> Cmd msg
-
-
-port shareOffice : String -> Cmd msg
-
-
 port downloadQr : () -> Cmd msg
 
 
@@ -92,7 +86,6 @@ init flags =
             , officeCode = "PROOFSTECH-HQ-2026"
             , scanStatus = ScanClosed
             , scanMessage = ""
-            , manualCode = ""
             , toast = Nothing
             , showInstall = False
             , showAddWorker = False
@@ -219,7 +212,7 @@ updateCore msg model =
             ( { model | page = page }, Cmd.none )
 
         OpenScanner ->
-            ( { model | scanStatus = ScanRequesting, scanMessage = "", manualCode = "" }
+            ( { model | scanStatus = ScanRequesting, scanMessage = "" }
             , startScanner ()
             )
 
@@ -231,12 +224,6 @@ updateCore msg model =
                 "ready" ->
                     ( { model | scanStatus = ScanActive }, Cmd.none )
 
-                "copied" ->
-                    ( { model | toast = Just (Toast "Office code copied" "You can paste it wherever you need it.") }, Cmd.none )
-
-                "copy-error" ->
-                    ( { model | toast = Just (Toast "Copy is unavailable" model.officeCode) }, Cmd.none )
-
                 "download-error" ->
                     ( { model | toast = Just (Toast "The QR could not download" "Reconnect once, then try again.") }, Cmd.none )
 
@@ -244,7 +231,7 @@ updateCore msg model =
                     ( { model | toast = Just (Toast "This phone is low on storage" "Free some space so offline records stay safe.") }, Cmd.none )
 
                 _ ->
-                    ( { model | scanStatus = ScanManual, scanMessage = friendlyCameraError message }, Cmd.none )
+                    ( { model | scanStatus = ScanBlocked, scanMessage = friendlyCameraError message }, Cmd.none )
 
         ScanDecoded value ->
             if validOfficeCode model value then
@@ -252,24 +239,11 @@ updateCore msg model =
 
             else
                 ( { model
-                    | scanStatus = ScanManual
-                    , scanMessage = "That QR does not belong to this office. Try the printed ProofsTech code."
+                    | scanStatus = ScanBlocked
+                    , scanMessage = "That QR is not the ProofsTech office pass. Find the printed office QR and try again."
                   }
                 , stopScanner ()
                 )
-
-        SetManualCode value ->
-            ( { model | manualCode = value }, Cmd.none )
-
-        SubmitManualCode ->
-            if String.trim model.manualCode == "" then
-                ( { model | scanMessage = "Enter the code printed below the office QR." }, Cmd.none )
-
-            else if validOfficeCode model model.manualCode then
-                registerAttendance { model | scanStatus = ScanClosed }
-
-            else
-                ( { model | scanMessage = "That code does not match this office. Check it and try again." }, Cmd.none )
 
         SetAuthEmail value ->
             ( { model | authEmail = value, authMessage = "" }, Cmd.none )
@@ -506,12 +480,6 @@ updateCore msg model =
                 Err _ ->
                     ( { model | toast = Just (Toast "Worker not added" "Please try again in a moment.") }, Cmd.none )
 
-        CopyOfficeCode ->
-            ( model, copyText model.officeCode )
-
-        ShareOfficeCode ->
-            ( model, shareOffice ("ProofsTech office attendance code: " ++ model.officeCode) )
-
         DownloadQr ->
             ( model, downloadQr () )
 
@@ -653,13 +621,13 @@ validOfficeCode model value =
 friendlyCameraError : String -> String
 friendlyCameraError message =
     if String.contains "HTTPS" message then
-        "Camera access needs a secure connection. You can still use the office code."
+        "Camera access needs a secure connection. Open the app over HTTPS, then scan the printed office QR."
 
     else if String.contains "Permission" message || String.contains "Allowed" message then
-        "Camera permission is off. Allow it in your browser settings, or use the office code."
+        "Camera permission is off. Allow camera access in your browser settings, then scan the office QR again."
 
     else
-        "The camera is unavailable right now. The printed office code works too."
+        "The camera is unavailable right now. Try again in a moment."
 
 
 mergeEntries : List Entry -> List Entry -> List Entry
