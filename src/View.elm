@@ -559,18 +559,25 @@ officeView model =
         [ div [ class "office-copy" ]
             [ p [ class "eyebrow" ] [ text "PROOFSTECH HQ, LAGOS" ]
             , h1 [] [ text "One scan.", br [] [], em [] [ text "Every arrival." ] ]
-            , p [ class "office-intro" ] [ text "Print the office pass. Place it at the entrance. Every arrival starts with the same scan." ]
+            , p [ class "office-intro" ] [ text "Print today's pass each morning and place it at the entrance. It stops working at midnight." ]
             , div [ class "office-steps" ]
-                [ div [] [ strong [] [ text "01" ], p [] [ text "Scan the printed QR with the Attendance app." ] ]
+                [ div [] [ strong [] [ text "01" ], p [] [ text "Print today's QR and put it at the entrance." ] ]
                 , div [] [ strong [] [ text "02" ], p [] [ text "We record the person and their arrival time." ] ]
                 , div [] [ strong [] [ text "03" ], p [] [ text "Their place on the daily wall appears." ] ]
                 ]
             ]
         , div [ class "qr-studio" ]
             [ div [ class "qr-shape" ]
-                [ img [ src "/api/qr.svg", alt "ProofsTech office attendance QR code", class "office-qr" ] []
+                [ img
+                    [ src ("/api/qr.svg?day=" ++ model.today)
+                    , alt ("ProofsTech office QR for " ++ formatLongDate model.today)
+                    , class "office-qr"
+                    ]
+                    []
                 , div [ class "qr-brand" ] [ brandMark, strong [] [ text "attendance" ] ]
+                , span [ class "qr-shape-day" ] [ text (String.toUpper (formatShortDate model.today) ++ " · TODAY ONLY") ]
                 ]
+            , p [ class "qr-day" ] [ text ("Valid today only · " ++ formatLongDate model.today) ]
             , p [] [ text "Point, scan, start your day." ]
             , div [ class "qr-actions" ]
                 [ button [ class "organic-button primary-button compact", onClick PrintQr ] [ text "Print QR" ]

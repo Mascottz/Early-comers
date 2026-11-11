@@ -63,6 +63,20 @@ class AttendanceTests(unittest.TestCase):
         self.assertEqual(worker["initials"], "AO")
         self.assertEqual(len(main.state()["workers"]), 9)
 
+    def test_office_pass_is_dated_for_today(self):
+        payload = main.office_pass_payload()
+        self.assertEqual(
+            payload,
+            f"proofstech://attendance?office={main.OFFICE_CODE}&day={main.lagos_today().isoformat()}",
+        )
+        self.assertEqual(main.office_pass_payload("2026-11-11").split("&day=")[1], "2026-11-11")
+
+    def test_office_qr_is_an_uncached_svg(self):
+        response = main.office_qr()
+        self.assertEqual(response.media_type, "image/svg+xml")
+        self.assertIn(b"<svg", response.body)
+        self.assertIn("no-store", response.headers["cache-control"])
+
     def test_invite_page_is_available_and_private(self):
         response = main.invite_page()
         self.assertEqual(Path(response.path).name, "invite.html")

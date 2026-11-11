@@ -1,8 +1,8 @@
-const CACHE = 'attendance-v7'
+const CACHE = 'attendance-v8'
 const CORE = [
   '/', '/index.html', '/styles.css', '/app.js', '/browser.js',
   '/manifest.webmanifest', '/runtime-config.js', '/favicon.svg', '/apple-touch-icon.png',
-  '/pwa-192.png', '/pwa-512.png', '/offline.html', '/invite.html', '/api/qr.svg',
+  '/pwa-192.png', '/pwa-512.png', '/offline.html', '/invite.html',
   '/staff/merciful.jpg', '/staff/md.jpg', '/staff/mascott.jpg',
   '/staff/fundstech.jpg', '/staff/ib-china.jpg',
   '/vendor/html5-qrcode.min.js',
@@ -28,6 +28,8 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const request = event.request
   if (request.method !== 'GET') return
+  const url = new URL(request.url)
+  if (url.origin === self.location.origin && url.pathname.startsWith('/api/')) return
   if (request.mode === 'navigate') {
     const path = new URL(request.url).pathname
     const isInvite = path === '/invite' || path === '/invite.html'
