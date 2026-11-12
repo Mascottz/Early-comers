@@ -127,6 +127,7 @@ type alias Model =
     , showAuthPassword : Bool
     , showAuthPin : Bool
     , refreshing : Bool
+    , syncing : Bool
     , lastSync : Int
     , appOrigin : String
     , showInviteLink : Bool
@@ -152,6 +153,8 @@ type Msg
     = Tick Time.Posix
     | AutoRefresh
     | AppVisible Bool
+    | RefreshNow
+    | RefreshTimeout
     | SetZone Time.Zone
     | Navigate Page
     | OpenScanner

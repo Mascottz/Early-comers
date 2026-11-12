@@ -130,6 +130,7 @@ init flags =
             , showAuthPassword = False
             , showAuthPin = False
             , refreshing = False
+            , syncing = False
             , lastSync = 0
             , appOrigin = flags.origin
             , showInviteLink = False
@@ -230,6 +231,39 @@ updateCore msg model =
         AppVisible visible ->
             if visible then
                 autoRefresh model
+
+            else
+                ( model, Cmd.none )
+
+        RefreshNow ->
+            if model.online then
+                ( { model | syncing = True }
+                , Cmd.batch
+                    [ dataFetch model
+                    , Process.sleep 9000 |> Task.perform (\_ -> RefreshTimeout)
+                    ]
+                )
+
+            else
+                ( { model
+                    | syncing = False
+                    , toast =
+                        Just
+                            (Toast "You are offline right now"
+                                "Your time is still safe on this phone. Everything syncs the moment the signal returns."
+                            )
+                  }
+                , Cmd.none
+                )
+
+        RefreshTimeout ->
+            if model.syncing then
+                ( { model
+                    | syncing = False
+                    , toast = Just (Toast "Could not reach the office" "Nothing is lost. The app keeps trying on its own every few seconds.")
+                  }
+                , Cmd.none
+                )
 
             else
                 ( model, Cmd.none )
@@ -439,10 +473,10 @@ updateCore msg model =
         GotCloudWorkers result ->
             case result of
                 Ok workers ->
-                    ( { model | workers = workers, serverReady = True, lastSync = Time.posixToMillis model.now }, Cmd.none )
+                    ( { model | workers = workers, serverReady = True, syncing = False, lastSync = Time.posixToMillis model.now }, Cmd.none )
 
                 Err _ ->
-                    ( { model | serverReady = False }, Cmd.none )
+                    ( failedRefresh { model | serverReady = False }, Cmd.none )
 
         GotCloudEntries result ->
             case result of
@@ -454,12 +488,12 @@ updateCore msg model =
                         updated =
                             { model | entries = merged }
                     in
-                    ( { updated | lastSync = Time.posixToMillis model.now }
+                    ( { updated | lastSync = Time.posixToMillis model.now, syncing = False }
                     , Cmd.batch <| List.map (cloudCheckIn updated) <| pendingEntries updated
                     )
 
                 Err _ ->
-                    ( model, Cmd.none )
+                    ( failedRefresh model, Cmd.none )
 
         GotAdminStatus result ->
             case result of
@@ -521,6 +555,7 @@ updateCore msg model =
                                 , officeCode = state.officeCode
                                 , serverReady = True
                                 , lastSync = Time.posixToMillis model.now
+                                , syncing = False
                             }
                     in
                     ( nextModel, Cmd.batch <| List.map Api.checkIn <| pendingEntries nextModel )
@@ -789,19 +824,33 @@ attendanceCsv model =
 autoRefresh : Model -> ( Model, Cmd Msg )
 autoRefresh model =
     if model.authStatus == Authenticated && model.online then
-        case model.supabase of
-            Just _ ->
-                ( model, cloudFetch model )
-
-            Nothing ->
-                if model.serverReady then
-                    ( model, Api.getState )
-
-                else
-                    ( model, Cmd.none )
+        ( model, dataFetch model )
 
     else
         ( model, Cmd.none )
+
+
+failedRefresh : Model -> Model
+failedRefresh model =
+    if model.syncing then
+        { model | syncing = False, toast = Just (Toast "Could not refresh" "Nothing is lost. The app will keep trying on its own.") }
+
+    else
+        model
+
+
+dataFetch : Model -> Cmd Msg
+dataFetch model =
+    case model.supabase of
+        Just _ ->
+            cloudFetch model
+
+        Nothing ->
+            if model.serverReady then
+                Api.getState
+
+            else
+                Cmd.none
 
 
 cloudFetch : Model -> Cmd Msg
@@ -845,6 +894,7 @@ signOut model =
         , role = WorkerView
         , page = Home
         , refreshing = False
+        , syncing = False
         , lastSync = 0
         , showInviteLink = False
         , inviteLink = ""
