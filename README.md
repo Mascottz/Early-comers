@@ -171,7 +171,7 @@ Brand fonts are vendored in `video/public/fonts/` with their SIL Open Font Licen
 
 Grace is **fifteen minutes after 09:00**, so 09:15 is on time and 09:16 onward is late. Launch day, **12 November 2026**, kept a thirty minute grace (09:30). Grace is decided per day: an entry from 12 November is measured against 09:30, everything from 13 November against 09:15, which is why old records keep the verdict they were given.
 
-The boss is not watched. `MD` is exempt by default (`EXEMPT_STAFF` in the build environment, comma separated, matched against the profile nickname, case-insensitive). Exempt arrivals are still recorded — they just never carry a Late tag, a fine, or a line in the late record, and the team list shows them as **Not tracked**.
+The boss is not watched. **ProofsTech** (Samuel Akeem, the owner) is exempt by default (`EXEMPT_STAFF` in the build environment, comma separated, matched against the profile nickname, case-insensitive). Exempt arrivals are still recorded — they just never carry a Late tag, a fine, or a line in the late record, and the team list shows them as **Not tracked**.
 
 Each late day carries a **₦2,000 fine**. Because attendance allows only one check-in per worker per day, the maximum is one fine per late day. The home summary, the daily wall, and the CSV export all show the status and fine.
 

@@ -625,7 +625,10 @@ entryRow model entry =
                     [ small [] [ text (if entry.synced then entry.source else "Waiting to sync") ]
                     , span [ class (if lateFor model entry then "timing-note late" else "timing-note") ]
                         [ text
-                            (if lateFor model entry then
+                            (if not (isTracked model worker) then
+                                "Not tracked"
+
+                             else if lateFor model entry then
                                 "Late · " ++ formatNaira lateFine
 
                              else
@@ -957,7 +960,7 @@ profileView model =
             , div [ class "setting-group small-settings" ]
                 [ div [ class "stat-line" ] [ span [] [ text "Records waiting to sync" ], strong [] [ text (String.fromInt (List.length (pendingEntries model))) ] ]
                 , div [ class "stat-line" ] [ span [] [ text "Storage" ], strong [] [ text "On this device" ] ]
-                , div [ class "stat-line" ] [ span [] [ text "App version" ], strong [] [ text "1.4" ] ]
+                , div [ class "stat-line" ] [ span [] [ text "App version" ], strong [] [ text "1.5" ] ]
                 , button
                     [ class "underlined-action sync-now-action"
                     , onClick RefreshNow

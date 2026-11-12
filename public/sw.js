@@ -1,4 +1,4 @@
-const CACHE = 'attendance-v17'
+const CACHE = 'attendance-v18'
 const CORE = [
   '/', '/index.html', '/styles.css', '/app.js', '/browser.js',
   '/manifest.webmanifest', '/runtime-config.js', '/favicon.svg', '/apple-touch-icon.png',
