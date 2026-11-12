@@ -185,7 +185,7 @@ Admins get a **Late record** page (desktop nav, or the link at the bottom of the
 
 `.github/workflows/monthly-backup.yml` runs at 03:10 UTC on the first of every month (and on manual dispatch). It calls `scripts/backup_records.py`, which pages through `attendance_entries` and `staff_profiles` with the service role key, writes one CSV per table, keeps them as a workflow artifact for 400 days, and uploads them to the [`records-backup`](https://github.com/Mascottz/Early-comers/releases/tag/records-backup) release so the archive lives outside Supabase.
 
-To switch it on, add two repository secrets: `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` (Project settings → API → service_role). Without them the job only prints a warning. Run it locally with:
+It runs off two repository secrets, `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` (Project settings → API keys → service_role), which are configured; without them the job only prints a warning. The artifact is kept for the repository maximum, 90 days, while the release assets stay for good. Run it locally with:
 
 ```bash
 SUPABASE_URL=https://<project>.supabase.co SUPABASE_SERVICE_ROLE_KEY=<key> python3 scripts/backup_records.py
