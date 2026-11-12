@@ -10,7 +10,8 @@ url = os.getenv("SUPABASE_URL", "").strip()
 key = os.getenv("SUPABASE_PUBLISHABLE_KEY", "").strip()
 office_code = os.getenv("OFFICE_CODE", "PROOFSTECH-HQ-2026").strip() or "PROOFSTECH-HQ-2026"
 # Comma-separated nicknames who are never marked late (the boss, for example).
-exempt_staff = os.getenv("EXEMPT_STAFF", "MD").strip()
+# ProofsTech is Samuel Akeem, the owner: present in the app, never watched.
+exempt_staff = os.getenv("EXEMPT_STAFF", "ProofsTech").strip()
 
 if url and key:
     config = {"supabaseUrl": url, "supabaseKey": key, "officeCode": office_code, "exemptStaff": exempt_staff}

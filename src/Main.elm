@@ -966,7 +966,7 @@ splitExempt text =
                 |> List.filter (\name -> name /= "")
     in
     if List.isEmpty listed then
-        [ "MD", "Akeem Samuel Aminu" ]
+        [ "ProofsTech", "Akeem Samuel Aminu" ]
 
     else
         listed
