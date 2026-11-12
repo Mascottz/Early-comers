@@ -641,7 +641,7 @@ profileView model =
             , div [ class "setting-group small-settings" ]
                 [ div [ class "stat-line" ] [ span [] [ text "Records waiting to sync" ], strong [] [ text (String.fromInt (List.length (pendingEntries model))) ] ]
                 , div [ class "stat-line" ] [ span [] [ text "Storage" ], strong [] [ text "On this device" ] ]
-                , div [ class "stat-line" ] [ span [] [ text "App version" ], strong [] [ text "1.0" ] ]
+                , div [ class "stat-line" ] [ span [] [ text "App version" ], strong [] [ text "1.1" ] ]
                 ]
             , if model.session /= Nothing then
                 button [ class "underlined-action signout-action", onClick SignOut ] [ text "Sign out on this device" ]
@@ -704,7 +704,7 @@ scanFrame model =
 scanCaption : Model -> String
 scanCaption model =
     if model.scanStatus == ScanRequesting then
-        "Waking up the camera…"
+        "Waking up the camera. If nothing happens, tap the button again."
 
     else if model.scanStatus == ScanArmed then
         "Looking for the pass…"
@@ -718,12 +718,17 @@ scanControls model =
     div [ class "scan-controls" ]
         [ button
             [ class "organic-button primary-button compact scan-button"
-            , onClick ArmScan
-            , disabled (model.scanStatus == ScanRequesting)
+            , onClick
+                (if model.scanStatus == ScanRequesting then
+                    OpenScanner
+
+                 else
+                    ArmScan
+                )
             ]
             [ text
                 (if model.scanStatus == ScanRequesting then
-                    "Starting camera…"
+                    "Opening camera…"
 
                  else if model.scanStatus == ScanArmed then
                     "Stop"

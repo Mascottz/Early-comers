@@ -1,4 +1,4 @@
-const CACHE = 'attendance-v11'
+const CACHE = 'attendance-v13'
 const CORE = [
   '/', '/index.html', '/styles.css', '/app.js', '/browser.js',
   '/manifest.webmanifest', '/runtime-config.js', '/favicon.svg', '/apple-touch-icon.png',
@@ -46,6 +46,25 @@ self.addEventListener('fetch', event => {
           const fallback = isInvite ? caches.match('/invite.html') : caches.match('/index.html')
           return fallback.then(response => response || caches.match('/offline.html'))
         })
+    )
+    return
+  }
+  // App code is network-first so a fixed build reaches phones immediately; the
+  // cache is only the offline fallback. Images and fonts stay cache-first.
+  const path = url.pathname
+  const freshFirst =
+    path === '/app.js' || path === '/browser.js' || path === '/styles.css' || path === '/runtime-config.js'
+  if (freshFirst) {
+    event.respondWith(
+      fetch(request)
+        .then(response => {
+          if (response.ok) {
+            const copy = response.clone()
+            caches.open(CACHE).then(cache => cache.put(request, copy))
+          }
+          return response
+        })
+        .catch(() => caches.match(request).then(cached => cached || Response.error()))
     )
     return
   }

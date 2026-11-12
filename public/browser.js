@@ -52,28 +52,52 @@ let scanRequest = 0
 let scanDecoder = null
 let nativeDetector = null
 
-function waitForElement(id, attempts = 40) {
+function waitForElement(id, timeout = 6000) {
+  const existing = document.getElementById(id)
+  if (existing) return Promise.resolve(existing)
   return new Promise((resolve, reject) => {
-    const look = left => {
+    const started = Date.now()
+    const look = () => {
       const element = document.getElementById(id)
       if (element) return resolve(element)
-      if (left <= 0) return reject(new Error('The camera view did not open. Close and try again.'))
-      requestAnimationFrame(() => look(left - 1))
+      if (Date.now() - started > timeout) {
+        return reject(new Error('The camera view did not open. Close the scanner and tap Scan again.'))
+      }
+      setTimeout(look, 100)
     }
-    look(attempts)
+    setTimeout(look, 100)
   })
 }
 
-function waitForVideo(video, attempts = 60) {
+function waitForVideo(video, timeout = 4000) {
+  if (video.videoWidth > 0 && video.videoHeight > 0) return Promise.resolve(true)
   return new Promise(resolve => {
-    const look = left => {
+    const started = Date.now()
+    const look = () => {
       if (video.videoWidth > 0 && video.videoHeight > 0) return resolve(true)
-      if (left <= 0) return resolve(false)
-      setTimeout(() => look(left - 1), 50)
+      if (Date.now() - started > timeout) return resolve(false)
+      setTimeout(look, 100)
     }
-    look(attempts)
+    setTimeout(look, 100)
   })
 }
+
+// Nothing in the scanner may fail silently: any stray error while the overlay is
+// open is reported back to Elm so the user always sees a reaction.
+function reportToElm(text) {
+  try {
+    app.ports.scannerMessage.send(text)
+  } catch (_) {}
+}
+
+function reportUnexpected(error) {
+  if (!document.getElementById('camera-surface')) return
+  const detail = (error && (error.name || error.message)) || String(error || 'unknown')
+  reportToElm('Scanner error: ' + String(detail).slice(0, 160))
+}
+
+window.addEventListener('error', event => reportUnexpected(event.error || event.message))
+window.addEventListener('unhandledrejection', event => reportUnexpected(event.reason))
 
 function cameraErrorMessage(error) {
   const name = (error && error.name) || ''
@@ -280,16 +304,26 @@ app.ports.disarmScanner.subscribe(() => {
 
 app.ports.startScanner.subscribe(async () => {
   const request = ++scanRequest
+  let settled = false
+  const settle = message => {
+    if (settled || request !== scanRequest) return
+    settled = true
+    reportToElm(message)
+  }
+
   try {
-    if (!window.isSecureContext) throw new Error('Camera access needs HTTPS')
+    if (!window.isSecureContext) throw new Error('Camera access needs HTTPS. Open the site over https, then scan.')
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       throw new Error('This browser cannot open the camera. Use Safari on iPhone or Chrome on Android.')
     }
+
     // The overlay is rendered by Elm after this port fires, so wait for its camera surface.
-    await waitForElement('camera-surface')
+    const surface = await waitForElement('camera-surface')
     if (request !== scanRequest) return
 
     await teardownCamera()
+    if (request !== scanRequest) return
+
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: false,
       video: {
@@ -309,8 +343,11 @@ app.ports.startScanner.subscribe(async () => {
         await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] })
       } catch (_) {}
     }
+    if (request !== scanRequest) {
+      stream.getTracks().forEach(t => t.stop())
+      return
+    }
 
-    const surface = document.getElementById('camera-surface')
     const video = document.createElement('video')
     video.setAttribute('playsinline', 'true')
     video.setAttribute('autoplay', 'true')
@@ -318,20 +355,23 @@ app.ports.startScanner.subscribe(async () => {
     video.srcObject = stream
     surface.innerHTML = ''
     surface.appendChild(video)
+
+    cameraSession = { stream, video, armed: false, tick: null, deadline: null, request }
+
+    // Attach first, then let the preview settle: never block the Scan button on
+    // video metadata, which can take a moment (or never arrive on some Androids).
     try {
       await video.play()
     } catch (_) {}
-    await waitForVideo(video)
-    if (request !== scanRequest) {
-      stream.getTracks().forEach(t => t.stop())
-      return
-    }
-
-    cameraSession = { stream, video, armed: false, tick: null, deadline: null, request }
+    settle('ready')
+    waitForVideo(video)
     getNativeDetector()
-    app.ports.scannerMessage.send('ready')
   } catch (error) {
-    if (request === scanRequest) app.ports.scannerMessage.send(cameraErrorMessage(error))
+    settle(cameraErrorMessage(error))
+  } finally {
+    if (!settled) {
+      settle('The camera did not start. Close the scanner and tap Scan again.')
+    }
   }
 })
 
