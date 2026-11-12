@@ -178,17 +178,14 @@ connectionLine model =
             , classList [ ( "is-syncing", model.syncing ) ]
             , onClick RefreshNow
             , attribute "aria-live" "polite"
-            , attribute "aria-label" "Refresh the office records now"
+            , attribute "aria-label" "Refresh now"
             ]
             [ span [ class "connection-dot" ] []
             , if model.syncing then
-                text "Refreshing the office records…"
-
-              else if List.isEmpty (pendingEntries model) then
-                text "Connected, everything is in step"
+                text "Refreshing…"
 
               else
-                text "Connected, syncing your saved time"
+                text "Connected"
             , if model.syncing then
                 span [ class "sync-stamp" ] [ text " · hold on" ]
 
@@ -201,7 +198,7 @@ connectionLine model =
                 [ span [ class "sync-icon" ] []
                 , text
                     (if model.syncing then
-                        "Syncing"
+                        "Refreshing"
 
                      else
                         "Refresh"
@@ -470,10 +467,14 @@ daySummary model arrivals =
             [ span [] [ text "Late" ]
             , strong [] [ text (String.fromInt (lateCountFor model arrivals) ++ " · " ++ formatNaira (lateFinesFor model arrivals)) ]
             ]
-        , div [ class "stat-line" ]
-            [ span [] [ text "Saved offline" ]
-            , strong [] [ text (String.fromInt (List.length (pendingEntries model)) ++ " records") ]
-            ]
+        , if model.role == AdminView then
+            div [ class "stat-line" ]
+                [ span [] [ text "Saved offline" ]
+                , strong [] [ text (String.fromInt (List.length (pendingEntries model)) ++ " records") ]
+                ]
+
+          else
+            text ""
         , p [ class "summary-footnote" ]
             [ text
                 ("Grace ends at "
@@ -622,7 +623,7 @@ entryRow model entry =
                     , small [] [ text worker.title ]
                     ]
                 , div [ class "entry-source" ]
-                    [ small [] [ text (if entry.synced then entry.source else "Waiting to sync") ]
+                    [ small [] [ text (if entry.synced then entry.source else "Saved on this phone") ]
                     , span [ class (if lateFor model entry then "timing-note late" else "timing-note") ]
                         [ text
                             (if not (isTracked model worker) then
@@ -958,9 +959,17 @@ profileView model =
                 , button [ class "organic-button light-button compact", onClick ToggleInstall ] [ text "Install on this iPhone" ]
                 ]
             , div [ class "setting-group small-settings" ]
-                [ div [ class "stat-line" ] [ span [] [ text "Records waiting to sync" ], strong [] [ text (String.fromInt (List.length (pendingEntries model))) ] ]
-                , div [ class "stat-line" ] [ span [] [ text "Storage" ], strong [] [ text "On this device" ] ]
-                , div [ class "stat-line" ] [ span [] [ text "App version" ], strong [] [ text "1.5" ] ]
+                [ if model.role == AdminView then
+                    div [ class "stat-line" ] [ span [] [ text "Records waiting to sync" ], strong [] [ text (String.fromInt (List.length (pendingEntries model))) ] ]
+
+                  else
+                    text ""
+                , if model.role == AdminView then
+                    div [ class "stat-line" ] [ span [] [ text "Storage" ], strong [] [ text "On this device" ] ]
+
+                  else
+                    text ""
+                , div [ class "stat-line" ] [ span [] [ text "App version" ], strong [] [ text "1.6" ] ]
                 , button
                     [ class "underlined-action sync-now-action"
                     , onClick RefreshNow

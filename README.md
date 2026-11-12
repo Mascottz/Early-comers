@@ -193,9 +193,11 @@ SUPABASE_URL=https://<project>.supabase.co SUPABASE_SERVICE_ROLE_KEY=<key> pytho
 
 ## Staying up to date
 
-The app refreshes itself every **10 seconds** while it is signed in and online, and immediately whenever it comes back to the foreground or regains a connection, so a check-in on someone else's phone shows up on the wall without a reload. The connection line at the top shows the age of the last successful sync (`updated 12s ago`). Check-ins made offline are pushed as soon as it refreshes.
+The app refreshes itself every **10 seconds** while it is signed in and online, and immediately whenever it comes back to the foreground or regains a connection, so a check-in on someone else's phone shows up on the wall without a reload. The connection line at the top just says **Connected** (with `updated 12s ago` while it is fresh), and tapping it refreshes. Check-ins made offline are pushed as soon as it refreshes.
 
 iPhone and iPad keep a backgrounded app frozen and can restore it from the back/forward cache without a reload, so the bridge also nudges Elm on `visibilitychange`, `pageshow` and `focus`; the app refetches the moment it comes forward.
+
+Technical wording is admin-only: sync counts, storage, "saved offline" and the CSV exports never appear in a worker's view. Workers see plain language — *Saved on this phone*, *Not tracked*, *Late*.
 
 An installed attendance app on iPhone has no pull-to-refresh — the gesture belongs to Safari, not to us — so there is an explicit control instead: **tap the connection bar** at the top of any screen, or **Profile → Refresh now**. While the fetch is in flight the bar reads *Refreshing the office records…* with a spinning ring, and it settles back to *updated just now*. Tapping it while offline shows a toast and keeps everything saved. If a refresh cannot finish within nine seconds you get a toast saying nothing was lost, and the background refresh keeps going.
 
