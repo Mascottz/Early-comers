@@ -177,6 +177,8 @@ Anyone who arrives after the grace period wears a **Late** tag for that whole da
 
 The app refreshes itself every **15 seconds** while it is signed in and online, and immediately whenever it comes back to the foreground or regains a connection, so a check-in on someone else's phone shows up on the wall without a reload. The connection line at the top shows the age of the last successful sync (`updated 12s ago`). Check-ins made offline are pushed as soon as it refreshes.
 
+An installed attendance app on iPhone has no pull-to-refresh — the gesture belongs to Safari, not to us — so there is an explicit control instead: **tap the connection bar** at the top of any screen, or **Profile → Refresh now**. While the fetch is in flight the bar reads *Refreshing the office records…* with a spinning ring, and it settles back to *updated just now*. Tapping it while offline shows a toast and keeps everything saved. If a refresh cannot finish within nine seconds you get a toast saying nothing was lost, and the background refresh keeps going.
+
 ## Daily office pass
 
 ProofsTech HQ is in Abuja, Nigeria. The office pass uses the Africa/Lagos timezone (WAT, UTC+1), which is the correct timezone identifier for Nigeria.

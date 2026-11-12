@@ -173,27 +173,55 @@ boolString value =
 connectionLine : Model -> Html Msg
 connectionLine model =
     if model.online then
-        div [ class "connection-line online-line" ]
+        button
+            [ class "connection-line online-line"
+            , classList [ ( "is-syncing", model.syncing ) ]
+            , onClick RefreshNow
+            , attribute "aria-live" "polite"
+            , attribute "aria-label" "Refresh the office records now"
+            ]
             [ span [ class "connection-dot" ] []
-            , text
-                (if List.isEmpty (pendingEntries model) then
-                    "Connected, everything is in step"
+            , if model.syncing then
+                text "Refreshing the office records…"
 
-                 else
-                    "Connected, syncing your saved time"
-                )
-            , if syncAge model == "" || model.authStatus /= Authenticated then
+              else if List.isEmpty (pendingEntries model) then
+                text "Connected, everything is in step"
+
+              else
+                text "Connected, syncing your saved time"
+            , if model.syncing then
+                span [ class "sync-stamp" ] [ text " · hold on" ]
+
+              else if syncAge model == "" || model.authStatus /= Authenticated then
                 text ""
 
               else
                 span [ class "sync-stamp" ] [ text (" · " ++ syncAge model) ]
-            
+            , span [ class "sync-action" ]
+                [ span [ class "sync-icon" ] []
+                , text
+                    (if model.syncing then
+                        "Syncing"
+
+                     else
+                        "Refresh"
+                    )
+                ]
             ]
 
     else
-        div [ class "connection-line offline-line" ]
+        button
+            [ class "connection-line offline-line"
+            , onClick RefreshNow
+            , attribute "aria-live" "polite"
+            , attribute "aria-label" "You are offline. Tap to check the connection again."
+            ]
             [ span [ class "connection-dot" ] []
             , text "You’re offline. Check in anyway, we’ll keep your time safe."
+            , span [ class "sync-action" ]
+                [ span [ class "sync-icon" ] []
+                , text "Refresh"
+                ]
             ]
 
 
@@ -735,6 +763,23 @@ profileView model =
                 [ div [ class "stat-line" ] [ span [] [ text "Records waiting to sync" ], strong [] [ text (String.fromInt (List.length (pendingEntries model))) ] ]
                 , div [ class "stat-line" ] [ span [] [ text "Storage" ], strong [] [ text "On this device" ] ]
                 , div [ class "stat-line" ] [ span [] [ text "App version" ], strong [] [ text "1.2" ] ]
+                , button
+                    [ class "underlined-action sync-now-action"
+                    , onClick RefreshNow
+                    ]
+                    [ text
+                        (if model.syncing then
+                            "Refreshing…"
+
+                         else
+                            "Refresh now "
+                        )
+                    , if model.syncing then
+                        text ""
+
+                      else
+                        span [ class "arrow-mark" ] []
+                    ]
                 ]
             , if model.session /= Nothing then
                 button [ class "underlined-action signout-action", onClick SignOut ] [ text "Sign out on this device" ]
