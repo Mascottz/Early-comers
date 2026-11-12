@@ -30,6 +30,24 @@ const app = Elm.Main.init({
   }
 })
 
+// iOS keeps a standalone PWA suspended in the background: timers stop and the
+// page can come back from the bfcache without a reload. Nudge Elm to refetch
+// whenever the app is brought forward again.
+function nudgeRefresh() {
+  try {
+    app.ports.appActive.send(null)
+  } catch (_) {}
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') nudgeRefresh()
+})
+window.addEventListener('pageshow', event => {
+  if (event.persisted) nudgeRefresh()
+})
+window.addEventListener('focus', nudgeRefresh)
+window.addEventListener('online', nudgeRefresh)
+
 app.ports.saveSession.subscribe(value => {
   localStorage.setItem('proofstech-session-v1', value)
 })
@@ -289,6 +307,9 @@ async function scanTick() {
 app.ports.armScanner.subscribe(async () => {
   const session = cameraSession
   if (!session) return
+  try {
+    if (session.video && session.video.paused) await session.video.play()
+  } catch (_) {}
   session.armed = true
   app.ports.scannerMessage.send('armed')
   clearTimeout(session.deadline)
@@ -317,14 +338,9 @@ app.ports.startScanner.subscribe(async () => {
       throw new Error('This browser cannot open the camera. Use Safari on iPhone or Chrome on Android.')
     }
 
-    // The overlay is rendered by Elm after this port fires, so wait for its camera surface.
-    const surface = await waitForElement('camera-surface')
-    if (request !== scanRequest) return
-
-    await teardownCamera()
-    if (request !== scanRequest) return
-
-    const stream = await navigator.mediaDevices.getUserMedia({
+    // iOS only shows the camera prompt for a call made inside the tap itself, so
+    // ask for the stream before waiting on the overlay to render.
+    const streamPromise = navigator.mediaDevices.getUserMedia({
       audio: false,
       video: {
         facingMode: { ideal: 'environment' },
@@ -332,6 +348,16 @@ app.ports.startScanner.subscribe(async () => {
         height: { ideal: 720 }
       }
     })
+    streamPromise.catch(() => {})
+
+    const surface = await waitForElement('camera-surface')
+    if (request !== scanRequest) {
+      streamPromise.then(stream => stream.getTracks().forEach(track => track.stop())).catch(() => {})
+      return
+    }
+
+    teardownCamera()
+    const stream = await streamPromise
     if (request !== scanRequest) {
       stream.getTracks().forEach(track => track.stop())
       return
@@ -350,8 +376,10 @@ app.ports.startScanner.subscribe(async () => {
 
     const video = document.createElement('video')
     video.setAttribute('playsinline', 'true')
+    video.setAttribute('webkit-playsinline', 'true')
     video.setAttribute('autoplay', 'true')
     video.muted = true
+    video.playsInline = true
     video.srcObject = stream
     surface.innerHTML = ''
     surface.appendChild(video)

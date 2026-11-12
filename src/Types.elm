@@ -155,6 +155,9 @@ type Msg
     | AppVisible Bool
     | RefreshNow
     | RefreshTimeout
+    | AppActive
+    | GotDayEntries String (Result Http.Error (List Entry))
+    | GotMonthEntries (Result Http.Error (List Entry))
     | SetZone Time.Zone
     | Navigate Page
     | OpenScanner

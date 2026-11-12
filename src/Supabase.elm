@@ -136,6 +136,46 @@ getEntries config session =
         }
 
 
+getEntriesForDate : SupabaseConfig -> Session -> String -> Cmd Msg
+getEntriesForDate config session day =
+    Http.request
+        { method = "GET"
+        , headers = authHeaders config session
+        , url =
+            config.url
+                ++ "/rest/v1/attendance_entries?select=id,worker_id,occurred_at,local_date,local_time,source&local_date=eq."
+                ++ day
+                ++ "&order=occurred_at.asc&limit=500"
+        , body = Http.emptyBody
+        , expect = Http.expectJson (GotDayEntries day) (Decode.list entryDecoder)
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
+getEntriesForMonth : SupabaseConfig -> Session -> String -> Cmd Msg
+getEntriesForMonth config session day =
+    let
+        month =
+            String.left 7 day
+    in
+    Http.request
+        { method = "GET"
+        , headers = authHeaders config session
+        , url =
+            config.url
+                ++ "/rest/v1/attendance_entries?select=id,worker_id,occurred_at,local_date,local_time,source&local_date=gte."
+                ++ month
+                ++ "-01&local_date=lte."
+                ++ month
+                ++ "-31&order=occurred_at.asc&limit=5000"
+        , body = Http.emptyBody
+        , expect = Http.expectJson GotMonthEntries (Decode.list entryDecoder)
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
 entryDecoder : Decoder Entry
 entryDecoder =
     Decode.map7 Entry

@@ -349,7 +349,7 @@ homeView model =
                                 button [ class "organic-button primary-button", onClick OpenScanner ] [ text "Scan to check in ", span [ class "arrow-mark" ] [] ]
                     , if model.role == AdminView then
                         if model.supabase /= Nothing then
-                            button [ class "text-action", onClick ExportRecords ] [ text "Export records" ]
+                            button [ class "text-action", onClick ExportRecords ] [ text "Export this month" ]
 
                           else
                             a [ class "text-action", href "/api/export.csv" ] [ text "Export records" ]
@@ -468,8 +468,39 @@ sectionHeading title subtitle =
 
 dateRibbon : Model -> Html Msg
 dateRibbon model =
-    div [ class "date-ribbon", attribute "aria-label" "Choose attendance date" ]
-        (List.map (dateButton model) (recentDates model.today))
+    div [ class "date-browser", attribute "aria-label" "Choose attendance date" ]
+        [ div [ class "date-ribbon" ] (List.map (dateButton model) (recentDates model.today))
+        , div [ class "date-jump-row" ]
+            [ button
+                [ class "date-step"
+                , onClick (SelectDate (stepDate -1 model.selectedDate))
+                , attribute "aria-label" "Previous day"
+                ]
+                [ text "‹" ]
+            , label [ class "date-jump-label" ]
+                [ span [] [ text "Jump to a day" ]
+                , input
+                    [ type_ "date"
+                    , class "date-jump"
+                    , value model.selectedDate
+                    , onInput SelectDate
+                    , attribute "aria-label" "Jump to any attendance date"
+                    ]
+                    []
+                ]
+            , button
+                [ class "date-step"
+                , onClick (SelectDate (stepDate 1 model.selectedDate))
+                , attribute "aria-label" "Next day"
+                ]
+                [ text "›" ]
+            ]
+        ]
+
+
+stepDate : Int -> String -> String
+stepDate offset day =
+    Date.toIsoString (Date.add Date.Days offset (parseDate day))
 
 
 dateButton : Model -> String -> Html Msg
@@ -574,7 +605,14 @@ entryRow model entry =
                             )
                         ]
                     ]
-                , time [ class "entry-time" ] [ text entry.time ]
+                , div [ class "entry-time-cell" ]
+                    [ time [ class "entry-time" ] [ text entry.time ]
+                    , if isLate entry then
+                        span [ class "late-tag late-tag-mobile" ] [ text "Late" ]
+
+                      else
+                        text ""
+                    ]
                 ]
 
 
@@ -596,7 +634,7 @@ wallView model =
                 ]
             , if model.role == AdminView then
                 if model.supabase /= Nothing then
-                    button [ class "organic-button secondary-button", onClick ExportRecords ] [ text "Export CSV" ]
+                    button [ class "organic-button secondary-button", onClick ExportRecords ] [ text "Export month CSV" ]
 
                   else
                     a [ class "organic-button secondary-button", href "/api/export.csv" ] [ text "Export CSV" ]
@@ -762,7 +800,7 @@ profileView model =
             , div [ class "setting-group small-settings" ]
                 [ div [ class "stat-line" ] [ span [] [ text "Records waiting to sync" ], strong [] [ text (String.fromInt (List.length (pendingEntries model))) ] ]
                 , div [ class "stat-line" ] [ span [] [ text "Storage" ], strong [] [ text "On this device" ] ]
-                , div [ class "stat-line" ] [ span [] [ text "App version" ], strong [] [ text "1.2" ] ]
+                , div [ class "stat-line" ] [ span [] [ text "App version" ], strong [] [ text "1.3" ] ]
                 , button
                     [ class "underlined-action sync-now-action"
                     , onClick RefreshNow
@@ -882,9 +920,16 @@ scanControls model =
 blockedScanner : Model -> Html Msg
 blockedScanner model =
     div [ class "scanner-blocked" ]
-        [ p [ class "form-error" ] [ text model.scanMessage ]
+        [ div [ class "scan-controls blocked-controls" ]
+            [ button
+                [ class "organic-button primary-button compact scan-button"
+                , onClick OpenScanner
+                ]
+                [ text "Scan" ]
+            , p [ class "scan-hint" ] [ text "Tap Scan to open the camera again." ]
+            ]
+        , p [ class "form-error" ] [ text model.scanMessage ]
         , p [ class "privacy-note" ] [ text "Staff check-in is QR only, so there is no typed code to share." ]
-        , button [ class "organic-button primary-button compact", onClick OpenScanner ] [ text "Try the camera again " ]
         ]
 
 
