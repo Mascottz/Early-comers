@@ -171,6 +171,12 @@ The grace period ends at **09:30** local time. A check-in at 09:30 is on time; 0
 
 Each late day carries a **₦2,000 fine**. Because attendance allows only one check-in per worker per day, the maximum is one fine per late day. The home summary, the daily wall, and the CSV export all show the status and fine.
 
+Anyone who arrives after the grace period wears a **Late** tag for that whole day: the tag sits beside their name on the daily wall and the home preview, next to their time in the team list and on their own hero card, and the wall lists every late arrival for the day under **Late today**. The tag is tied to the day's record, so yesterday's tag stays on yesterday and today starts clean.
+
+## Staying up to date
+
+The app refreshes itself every **15 seconds** while it is signed in and online, and immediately whenever it comes back to the foreground or regains a connection, so a check-in on someone else's phone shows up on the wall without a reload. The connection line at the top shows the age of the last successful sync (`updated 12s ago`). Check-ins made offline are pushed as soon as it refreshes.
+
 ## Daily office pass
 
 ProofsTech HQ is in Abuja, Nigeria. The office pass uses the Africa/Lagos timezone (WAT, UTC+1), which is the correct timezone identifier for Nigeria.

@@ -22,7 +22,7 @@ seedEntries : String -> List Entry
 seedEntries today =
     let
         schedule =
-            [ ( "w2", "07:56" ), ( "w6", "08:04" ), ( "w3", "08:18" ), ( "w5", "08:27" ), ( "w4", "08:36" ), ( "w8", "08:51" ), ( "w7", "09:06" ) ]
+            [ ( "w2", "07:56" ), ( "w6", "08:04" ), ( "w3", "08:18" ), ( "w5", "08:27" ), ( "w4", "08:36" ), ( "w8", "08:51" ), ( "w7", "09:06" ), ( "w1", "09:47" ) ]
 
         makeEntry day ( workerId, clock ) =
             Entry ("seed-" ++ day ++ "-" ++ workerId) workerId day clock (timestamp day clock) "Office QR" True
