@@ -146,6 +146,8 @@ When you press Scan, the app captures only the pixels inside the box and tries t
 
 On browsers with the native `BarcodeDetector` API (Android Chrome) the bounding box is also checked directly; elsewhere `html5-qrcode` decodes the cropped frame, so a half-visible code still fails.
 
+The scanner never sits silent: the button stays tappable while the camera wakes up, permission and camera errors are shown in plain words, and if the camera has not started within six seconds the panel says so and offers **Try the camera again**.
+
 ## Install video
 
 `video/` is a [Remotion](https://remotion.dev) project that renders a 35-second 3D explainer showing how to install the app on iPhone (Safari → Share → Add to Home Screen) and Android (Chrome → ⋮ → Add to Home screen).

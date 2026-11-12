@@ -153,6 +153,7 @@ type Msg
     | Navigate Page
     | OpenScanner
     | ArmScan
+    | ScanWatchdog
     | CloseScanner
     | ScannerMessage String
     | ScanDecoded String

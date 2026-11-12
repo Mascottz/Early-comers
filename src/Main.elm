@@ -5,6 +5,7 @@ import Browser
 import Date
 import Demo
 import Http
+import Process
 import Storage
 import Supabase
 import Task
@@ -236,11 +237,29 @@ updateCore msg model =
 
         OpenScanner ->
             ( { model | scanStatus = ScanRequesting, scanMessage = "" }
-            , startScanner ()
+            , Cmd.batch
+                [ startScanner ()
+                , Process.sleep 6000 |> Task.perform (\_ -> ScanWatchdog)
+                ]
             )
 
+        ScanWatchdog ->
+            if model.scanStatus == ScanRequesting then
+                ( { model
+                    | scanStatus = ScanBlocked
+                    , scanMessage = "The camera did not start on this phone. Tap “Try the camera again”, and make sure camera access is allowed for this site."
+                  }
+                , stopScanner ()
+                )
+
+            else
+                ( model, Cmd.none )
+
         ArmScan ->
-            if model.scanStatus == ScanArmed then
+            if model.scanStatus == ScanRequesting then
+                ( { model | scanStatus = ScanRequesting, scanMessage = "" }, startScanner () )
+
+            else if model.scanStatus == ScanArmed then
                 ( { model | scanStatus = ScanActive, scanMessage = "" }, disarmScanner () )
 
             else if model.scanStatus == ScanActive then
@@ -876,6 +895,9 @@ friendlyCameraError message =
 
     else if String.contains "did not open" lower then
         "The camera view did not open. Close this panel and tap Scan again."
+
+    else if String.startsWith "Scanner error" message then
+        String.left 220 message
 
     else
         "The camera is unavailable right now. Try again in a moment."
