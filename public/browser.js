@@ -26,6 +26,7 @@ const app = Elm.Main.init({
     supabaseUrl: config.supabaseUrl || '',
     supabaseKey: config.supabaseKey || '',
     officeCode: config.officeCode || '',
+    exemptStaff: config.exemptStaff || '',
     origin: window.location.origin
   }
 })

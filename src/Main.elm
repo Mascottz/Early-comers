@@ -132,6 +132,10 @@ init flags =
             , authMessage = ""
             , showAuthPassword = False
             , showAuthPin = False
+            , exemptStaff = splitExempt flags.exemptStaff
+            , logMonth = String.left 7 flags.today
+            , logEntries = []
+            , logLoading = False
             , refreshing = False
             , syncing = False
             , lastSync = 0
@@ -275,7 +279,29 @@ updateCore msg model =
             ( { model | zone = zone }, Cmd.none )
 
         Navigate page ->
-            ( { model | page = page }, Cmd.none )
+            ( { model | page = page }
+            , if page == Records then
+                loadLog model model.logMonth
+
+              else
+                Cmd.none
+            )
+
+        SelectLogMonth month ->
+            ( { model | logMonth = month, logLoading = True, logEntries = [] }, loadLog model month )
+
+        GotLogEntries month result ->
+            case result of
+                Ok entries ->
+                    ( { model | logMonth = month, logEntries = entries, logLoading = False }, Cmd.none )
+
+                Err _ ->
+                    ( { model
+                        | logLoading = False
+                        , toast = Just (Toast "Could not load that month" "Check the connection, then pick the month again.")
+                      }
+                    , Cmd.none
+                    )
 
         OpenScanner ->
             ( { model | scanStatus = ScanRequesting, scanMessage = "" }
@@ -766,6 +792,25 @@ updateCore msg model =
                 _ ->
                     ( model, exportCsv (attendanceCsv model) )
 
+        ExportLogMonth ->
+            let
+                month =
+                    model.logMonth
+
+                loadedMonth =
+                    List.filter (\entry -> String.left 7 entry.date == month) model.entries
+            in
+            case ( model.supabase, model.session ) of
+                ( Just cloud, Just session ) ->
+                    if model.online then
+                        ( model, Supabase.getEntriesForMonth cloud session (month ++ "-01") )
+
+                    else
+                        ( model, exportCsv (attendanceCsvFrom model loadedMonth) )
+
+                _ ->
+                    ( model, exportCsv (attendanceCsvFrom model loadedMonth) )
+
         ClearToast ->
             ( { model | toast = Nothing }, Cmd.none )
 
@@ -837,15 +882,26 @@ attendanceCsvFrom model entries =
     let
         row entry =
             let
+                exempt =
+                    case workerById model entry.workerId of
+                        Just worker ->
+                            not (isTracked model worker)
+
+                        Nothing ->
+                            False
+
                 status =
-                    if isLate entry then
+                    if exempt then
+                        "Not tracked"
+
+                    else if lateFor model entry then
                         "Late"
 
                     else
                         "On time"
 
                 fine =
-                    if isLate entry then
+                    if lateFor model entry then
                         String.fromInt lateFine
 
                     else
@@ -885,6 +941,35 @@ failedRefresh model =
 
     else
         model
+
+
+loadLog : Model -> String -> Cmd Msg
+loadLog model month =
+    if model.online then
+        case ( model.supabase, model.session ) of
+            ( Just cloud, Just session ) ->
+                Supabase.getMonthEntries cloud session month
+
+            _ ->
+                Cmd.none
+
+    else
+        Cmd.none
+
+
+splitExempt : String -> List String
+splitExempt text =
+    let
+        listed =
+            String.split "," text
+                |> List.map String.trim
+                |> List.filter (\name -> name /= "")
+    in
+    if List.isEmpty listed then
+        [ "MD", "Akeem Samuel Aminu" ]
+
+    else
+        listed
 
 
 loadDay : Model -> String -> Cmd Msg

@@ -16,6 +16,7 @@ type Page
     | Team
     | Office
     | Profile
+    | Records
 
 
 type ScanStatus
@@ -126,6 +127,10 @@ type alias Model =
     , authMessage : String
     , showAuthPassword : Bool
     , showAuthPin : Bool
+    , exemptStaff : List String
+    , logMonth : String
+    , logEntries : List Entry
+    , logLoading : Bool
     , refreshing : Bool
     , syncing : Bool
     , lastSync : Int
@@ -145,6 +150,7 @@ type alias Flags =
     , supabaseUrl : String
     , supabaseKey : String
     , officeCode : String
+    , exemptStaff : String
     , origin : String
     }
 
@@ -158,6 +164,8 @@ type Msg
     | AppActive
     | GotDayEntries String (Result Http.Error (List Entry))
     | GotMonthEntries (Result Http.Error (List Entry))
+    | SelectLogMonth String
+    | GotLogEntries String (Result Http.Error (List Entry))
     | SetZone Time.Zone
     | Navigate Page
     | OpenScanner
@@ -202,6 +210,7 @@ type Msg
     | DownloadQr
     | PrintQr
     | ExportRecords
+    | ExportLogMonth
     | ClearToast
     | NoOp
 
@@ -326,6 +335,28 @@ lateGrace =
     "09:30"
 
 
+{-| The office ran a half-hour grace on the launch day. From the next morning the
+grace is fifteen minutes: 09:15 is on time, 09:16 is late.
+-}
+lateGraceFrom : String
+lateGraceFrom =
+    "2026-11-13"
+
+
+graceFor : String -> String
+graceFor day =
+    if day < lateGraceFrom then
+        "09:30"
+
+    else
+        "09:15"
+
+
+isLateOn : String -> Entry -> Bool
+isLateOn day entry =
+    entry.time > graceFor day
+
+
 lateFine : Int
 lateFine =
     2000
@@ -333,7 +364,60 @@ lateFine =
 
 isLate : Entry -> Bool
 isLate entry =
-    entry.time > lateGrace
+    isLateOn entry.date entry
+
+
+{-| Owners and anyone else the office does not want watched are matched by name,
+case-insensitively, so their arrivals never carry a Late tag or a fine.
+-}
+isExemptName : List String -> String -> Bool
+isExemptName names name =
+    let
+        needle =
+            String.toLower (String.trim name)
+    in
+    List.any (\entry -> String.contains (String.toLower (String.trim entry)) needle && String.trim entry /= "") names
+
+
+isTracked : Model -> Worker -> Bool
+isTracked model worker =
+    not (isExemptName model.exemptStaff worker.name)
+
+
+lateFor : Model -> Entry -> Bool
+lateFor model entry =
+    case workerById model entry.workerId of
+        Just worker ->
+            isTracked model worker && isLateOn entry.date entry
+
+        Nothing ->
+            isLateOn entry.date entry
+
+
+lateCountFor : Model -> List Entry -> Int
+lateCountFor model entries =
+    List.length (List.filter (lateFor model) entries)
+
+
+lateFinesFor : Model -> List Entry -> Int
+lateFinesFor model entries =
+    lateCountFor model entries * lateFine
+
+
+{-| Minutes past that day's grace, for the admin record.
+-}
+lateMinutes : String -> Entry -> Int
+lateMinutes day entry =
+    let
+        toMinutes clock =
+            case String.split ":" clock |> List.filterMap String.toInt of
+                hour :: minute :: _ ->
+                    hour * 60 + minute
+
+                _ ->
+                    0
+    in
+    max 0 (toMinutes entry.time - toMinutes (graceFor day))
 
 
 lateCount : List Entry -> Int

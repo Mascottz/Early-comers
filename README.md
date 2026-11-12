@@ -169,11 +169,27 @@ Brand fonts are vendored in `video/public/fonts/` with their SIL Open Font Licen
 
 ## Lateness and fines
 
-The grace period ends at **09:30** local time. A check-in at 09:30 is on time; 09:31 onward is late.
+Grace is **fifteen minutes after 09:00**, so 09:15 is on time and 09:16 onward is late. Launch day, **12 November 2026**, kept a thirty minute grace (09:30). Grace is decided per day: an entry from 12 November is measured against 09:30, everything from 13 November against 09:15, which is why old records keep the verdict they were given.
+
+The boss is not watched. `MD` is exempt by default (`EXEMPT_STAFF` in the build environment, comma separated, matched against the profile nickname, case-insensitive). Exempt arrivals are still recorded — they just never carry a Late tag, a fine, or a line in the late record, and the team list shows them as **Not tracked**.
 
 Each late day carries a **₦2,000 fine**. Because attendance allows only one check-in per worker per day, the maximum is one fine per late day. The home summary, the daily wall, and the CSV export all show the status and fine.
 
 Anyone who arrives after the grace period wears a **Late** tag for that whole day: the tag sits beside their name on the daily wall and the home preview, next to their time in the team list and on their own hero card, and the wall lists every late arrival for the day under **Late today**. The tag is tied to the day's record, so yesterday's tag stays on yesterday and today starts clean.
+
+## The late record
+
+Admins get a **Late record** page (desktop nav, or the link at the bottom of the daily wall). It lists every late arrival for one month — date, weekday, person, arrival time, how many minutes past that day's grace, and the fine — with month arrows, a This month shortcut, and totals at the top. It reads straight from Supabase for the selected month (`local_date=gte.…-01&local_date=lte.…-31`), so it works for any month, not just what the app happens to have cached. **Export month CSV** downloads the same month as a spreadsheet.
+
+## Monthly records backup
+
+`.github/workflows/monthly-backup.yml` runs at 03:10 UTC on the first of every month (and on manual dispatch). It calls `scripts/backup_records.py`, which pages through `attendance_entries` and `staff_profiles` with the service role key, writes one CSV per table, keeps them as a workflow artifact for 400 days, and uploads them to the [`records-backup`](https://github.com/Mascottz/Early-comers/releases/tag/records-backup) release so the archive lives outside Supabase.
+
+To switch it on, add two repository secrets: `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` (Project settings → API → service_role). Without them the job only prints a warning. Run it locally with:
+
+```bash
+SUPABASE_URL=https://<project>.supabase.co SUPABASE_SERVICE_ROLE_KEY=<key> python3 scripts/backup_records.py
+```
 
 ## Staying up to date
 

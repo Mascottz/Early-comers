@@ -15,3 +15,5 @@ public/runtime-config.js
 video/node_modules/
 video/out/
 video/.remotion/
+
+backups/
