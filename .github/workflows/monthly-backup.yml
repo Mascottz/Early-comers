@@ -24,7 +24,7 @@ jobs:
       BACKUP_READY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY != '' }}
     steps:
       - name: Check out
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Explain the missing secret
         if: env.BACKUP_READY != 'true'
@@ -33,7 +33,7 @@ jobs:
 
       - name: Set up Python
         if: env.BACKUP_READY == 'true'
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.11'
 
@@ -43,11 +43,11 @@ jobs:
 
       - name: Keep the CSVs as a run artifact
         if: env.BACKUP_READY == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: attendance-backup
           path: backups/*.csv
-          retention-days: 400
+          retention-days: 90 # the repository maximum
 
       - name: Publish to the records release
         if: env.BACKUP_READY == 'true'
