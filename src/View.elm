@@ -246,6 +246,11 @@ appHeader model =
                 [ text "Scan" ]
             , navItem model Team "Team"
             , if model.role == AdminView then
+                navItem model Records "Late record"
+
+              else
+                text ""
+            , if model.role == AdminView then
                 navItem model Office "Office QR"
 
               else
@@ -304,6 +309,21 @@ pageView model =
 
         Profile ->
             profileView model
+
+        Records ->
+            if model.role == AdminView then
+                recordsView model
+
+            else
+                div [ class "page records-page" ]
+                    [ div [ class "page-title-row" ]
+                        [ div []
+                            [ p [ class "eyebrow" ] [ text "ADMINS ONLY" ]
+                            , h1 [] [ text "The late ", em [] [ text "record." ] ]
+                            , p [] [ text "This page is kept for the admins who watch the mornings." ]
+                            ]
+                        ]
+                    ]
 
 
 homeView : Model -> Html Msg
@@ -365,7 +385,7 @@ homeView model =
                         [ text (if ownEntry == Nothing then "RIGHT HERE, RIGHT NOW" else "YOUR ARRIVAL")
                         , case ownEntry of
                             Just entry ->
-                                if isLate entry then
+                                if lateFor model entry then
                                     lateTag
 
                                 else
@@ -415,7 +435,7 @@ daySummary model arrivals =
             List.head arrivals
 
         onTime =
-            List.filter (not << isLate) arrivals |> List.length
+            List.filter (\entry -> not (lateFor model entry)) arrivals |> List.length
 
         percentage =
             if total == 0 then
@@ -448,13 +468,21 @@ daySummary model arrivals =
             ]
         , div [ class "stat-line" ]
             [ span [] [ text "Late" ]
-            , strong [] [ text (String.fromInt (lateCount arrivals) ++ " · " ++ formatNaira (lateFineTotal arrivals)) ]
+            , strong [] [ text (String.fromInt (lateCountFor model arrivals) ++ " · " ++ formatNaira (lateFinesFor model arrivals)) ]
             ]
         , div [ class "stat-line" ]
             [ span [] [ text "Saved offline" ]
             , strong [] [ text (String.fromInt (List.length (pendingEntries model)) ++ " records") ]
             ]
-        , p [ class "summary-footnote" ] [ text ("Grace ends at " ++ lateGrace ++ ". Every late arrival carries a " ++ formatNaira lateFine ++ " fine.") ]
+        , p [ class "summary-footnote" ]
+            [ text
+                ("Grace ends at "
+                    ++ graceFor model.today
+                    ++ ". Every late arrival carries a "
+                    ++ formatNaira lateFine
+                    ++ " fine."
+                )
+            ]
         ]
 
 
@@ -585,7 +613,7 @@ entryRow model entry =
                 , div [ class "entry-person" ]
                     [ div [ class "entry-name-row" ]
                         [ strong [] [ text worker.name ]
-                        , if isLate entry then
+                        , if lateFor model entry then
                             lateTag
 
                           else
@@ -595,9 +623,9 @@ entryRow model entry =
                     ]
                 , div [ class "entry-source" ]
                     [ small [] [ text (if entry.synced then entry.source else "Waiting to sync") ]
-                    , span [ class (if isLate entry then "timing-note late" else "timing-note") ]
+                    , span [ class (if lateFor model entry then "timing-note late" else "timing-note") ]
                         [ text
-                            (if isLate entry then
+                            (if lateFor model entry then
                                 "Late · " ++ formatNaira lateFine
 
                              else
@@ -607,7 +635,7 @@ entryRow model entry =
                     ]
                 , div [ class "entry-time-cell" ]
                     [ time [ class "entry-time" ] [ text entry.time ]
-                    , if isLate entry then
+                    , if lateFor model entry then
                         span [ class "late-tag late-tag-mobile" ] [ text "Late" ]
 
                       else
@@ -658,13 +686,13 @@ wallView model =
                 , p [] [ text "Not a leaderboard. Just a truthful little record of being here, together." ]
                 , div [ class "wall-late-block" ]
                     [ p [ class "eyebrow" ] [ text "LATE TODAY" ]
-                    , if List.isEmpty (List.filter isLate entries) then
-                        p [ class "wall-late-none" ] [ text ("Nobody yet. Grace ends at " ++ lateGrace ++ ".") ]
+                    , if List.isEmpty (List.filter (lateFor model) entries) then
+                        p [ class "wall-late-none" ] [ text ("Nobody yet. Grace ends at " ++ graceFor model.selectedDate ++ ".") ]
 
                       else
                         div [ class "wall-late-people" ]
-                            (List.map (latePerson model) (List.filter isLate entries))
-                    , p [ class "wall-fines" ] [ text ("Late fines: " ++ formatNaira (lateFineTotal entries)) ]
+                            (List.map (latePerson model) (List.filter (lateFor model) entries))
+                    , p [ class "wall-fines" ] [ text ("Late fines: " ++ formatNaira (lateFinesFor model entries)) ]
                     ]
                 , div [ class "handwritten-line" ] [ text "Every day has its own shape." ]
                 ]
@@ -706,16 +734,20 @@ teamMember model worker =
         , div [ class "team-arrival" ]
             [ small [] [ text "TODAY" ]
             , strong [] [ text (Maybe.map .time arrival |> Maybe.withDefault "Not in yet") ]
-            , case arrival of
-                Just entry ->
-                    if isLate entry then
-                        lateTag
+            , if not (isTracked model worker) then
+                span [ class "muted-tag", attribute "title" "Not tracked for lateness" ] [ text "Not tracked" ]
 
-                    else
-                        text ""
+              else
+                case arrival of
+                    Just entry ->
+                        if lateFor model entry then
+                            lateTag
 
-                Nothing ->
-                    text "" 
+                        else
+                            text ""
+
+                    Nothing ->
+                        text "" 
             , if model.role == AdminView then
                 button [ class "invite-link-action", onClick (PrepareInviteLink worker) ] [ text "Prepare link" ]
 
@@ -723,6 +755,131 @@ teamMember model worker =
                 text ""
             ]
         ]
+
+
+recordsView : Model -> Html Msg
+recordsView model =
+    let
+        month =
+            model.logMonth
+
+        inMonth entry =
+            String.left 7 entry.date == month
+
+        source =
+            case ( model.supabase, model.authStatus ) of
+                ( Just _, Authenticated ) ->
+                    model.logEntries
+
+                _ ->
+                    List.filter inMonth model.entries
+
+        lateOnes =
+            List.filter (lateFor model) source
+                |> List.sortBy .timestamp
+                |> List.reverse
+
+        monthLabel =
+            Date.format "MMMM yyyy" (parseDate (month ++ "-01"))
+    in
+    div [ class "page records-page" ]
+        [ div [ class "page-title-row" ]
+            [ div []
+                [ p [ class "eyebrow" ] [ text "KEPT FOR THE RECORD" ]
+                , h1 [] [ text "The late ", em [] [ text "record." ] ]
+                , p [] [ text "Every late arrival, with the exact date and time it was recorded." ]
+                ]
+            , button [ class "organic-button secondary-button", onClick ExportLogMonth ] [ text "Export month CSV" ]
+            ]
+        , div [ class "record-month-bar" ]
+            [ button
+                [ class "date-step"
+                , onClick (SelectLogMonth (shiftMonth -1 month))
+                , attribute "aria-label" "Previous month"
+                ]
+                [ text "‹" ]
+            , div [ class "record-month-label" ]
+                [ strong [] [ text monthLabel ]
+                , small []
+                    [ text
+                        (String.fromInt (List.length lateOnes)
+                            ++ (if List.length lateOnes == 1 then " late arrival" else " late arrivals")
+                            ++ " · "
+                            ++ formatNaira (List.length lateOnes * lateFine)
+                        )
+                    ]
+                ]
+            , button
+                [ class "date-step"
+                , onClick (SelectLogMonth (shiftMonth 1 month))
+                , attribute "aria-label" "Next month"
+                ]
+                [ text "›" ]
+            , if month == String.left 7 model.today then
+                text ""
+
+              else
+                button [ class "text-action record-today", onClick (SelectLogMonth (String.left 7 model.today)) ] [ text "This month" ]
+            ]
+        , if model.logLoading && List.isEmpty source then
+            p [ class "record-empty" ] [ text "Loading the month…" ]
+
+        else if List.isEmpty lateOnes then
+            div [ class "empty-wall" ]
+                [ smallFlower
+                , h3 [] [ text "Nobody was late." ]
+                , p [] [ text ("Grace ended at " ++ graceFor model.today ++ " that month. A clean month.") ]
+                ]
+
+        else
+            div [ class "record-table" ]
+                [ div [ class "record-head" ]
+                    [ span [] [ text "Date" ]
+                    , span [] [ text "Person" ]
+                    , span [] [ text "Arrival" ]
+                    , span [] [ text "Late by" ]
+                    , span [] [ text "Fine" ]
+                    ]
+                , div [] (List.map (recordRow model) lateOnes)
+                ]
+        , p [ class "record-footnote" ]
+            [ text
+                ("Fifteen minutes after 09:00 is the grace now, so 09:16 counts as late. Launch day, 12 November 2026, kept thirty minutes. "
+                    ++ "Each day is judged by the grace that applied to it. Not tracked: "
+                    ++ String.join ", " model.exemptStaff
+                    ++ "."
+                )
+            ]
+        ]
+
+
+recordRow : Model -> Entry -> Html Msg
+recordRow model entry =
+    let
+        person =
+            workerById model entry.workerId
+                |> Maybe.map .name
+                |> Maybe.withDefault "Former staff"
+    in
+    div [ class "record-row" ]
+        [ span [ class "record-date" ]
+            [ strong [] [ text (Date.format "dd MMM" (parseDate entry.date)) ]
+            , small [] [ text (Date.format "EEE" (parseDate entry.date)) ]
+            ]
+        , span [ class "record-person" ]
+            [ strong [] [ text person ]
+            , small [] [ text (Maybe.map .title (workerById model entry.workerId) |> Maybe.withDefault "") ]
+            ]
+        , span [ class "record-time" ] [ text entry.time ]
+        , span [ class "record-late" ] [ text (String.fromInt (lateMinutes entry.date entry) ++ " min") ]
+        , span [ class "record-fine" ] [ text (formatNaira lateFine) ]
+        ]
+
+
+shiftMonth : Int -> String -> String
+shiftMonth offset month =
+    Date.toIsoString (Date.add Date.Months offset (parseDate (month ++ "-01")))
+        |> String.left 7
 
 
 officeView : Model -> Html Msg
@@ -800,7 +957,7 @@ profileView model =
             , div [ class "setting-group small-settings" ]
                 [ div [ class "stat-line" ] [ span [] [ text "Records waiting to sync" ], strong [] [ text (String.fromInt (List.length (pendingEntries model))) ] ]
                 , div [ class "stat-line" ] [ span [] [ text "Storage" ], strong [] [ text "On this device" ] ]
-                , div [ class "stat-line" ] [ span [] [ text "App version" ], strong [] [ text "1.3" ] ]
+                , div [ class "stat-line" ] [ span [] [ text "App version" ], strong [] [ text "1.4" ] ]
                 , button
                     [ class "underlined-action sync-now-action"
                     , onClick RefreshNow

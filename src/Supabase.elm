@@ -176,6 +176,25 @@ getEntriesForMonth config session day =
         }
 
 
+getMonthEntries : SupabaseConfig -> Session -> String -> Cmd Msg
+getMonthEntries config session month =
+    Http.request
+        { method = "GET"
+        , headers = authHeaders config session
+        , url =
+            config.url
+                ++ "/rest/v1/attendance_entries?select=id,worker_id,occurred_at,local_date,local_time,source&local_date=gte."
+                ++ month
+                ++ "-01&local_date=lte."
+                ++ month
+                ++ "-31&order=local_date.desc,local_time.asc&limit=5000"
+        , body = Http.emptyBody
+        , expect = Http.expectJson (GotLogEntries month) (Decode.list entryDecoder)
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
 entryDecoder : Decoder Entry
 entryDecoder =
     Decode.map7 Entry

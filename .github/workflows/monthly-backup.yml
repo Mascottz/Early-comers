@@ -1,0 +1,61 @@
+name: Monthly records backup
+
+on:
+  schedule:
+    # 03:10 UTC on the first of every month.
+    - cron: '10 3 1 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: records-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    name: Dump attendance tables to CSV
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      BACKUP_READY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY != '' }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Explain the missing secret
+        if: env.BACKUP_READY != 'true'
+        run: |
+          echo "::warning::Add SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY as repository secrets to enable the monthly dump."
+
+      - name: Set up Python
+        if: env.BACKUP_READY == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Dump records
+        if: env.BACKUP_READY == 'true'
+        run: python3 scripts/backup_records.py
+
+      - name: Keep the CSVs as a run artifact
+        if: env.BACKUP_READY == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: attendance-backup
+          path: backups/*.csv
+          retention-days: 400
+
+      - name: Publish to the records release
+        if: env.BACKUP_READY == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view records-backup >/dev/null 2>&1 || \
+            gh release create records-backup \
+              --title "Attendance records backup" \
+              --notes "Monthly CSV dumps of attendance_entries and staff_profiles, uploaded automatically on the first of each month."
+          gh release upload records-backup backups/*.csv --clobber
