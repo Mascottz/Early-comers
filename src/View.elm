@@ -671,8 +671,10 @@ scannerView model =
                     div [ class "camera-view" ]
                         [ div [ class "camera-organic" ]
                             [ div [ id "camera-surface" ] []
-                            , div [ class "camera-caption" ] [ text (if model.scanStatus == ScanRequesting then "Waking up the camera…" else "Hold the QR inside this shape") ]
+                            , scanFrame model
+                            , div [ class "camera-caption" ] [ text (scanCaption model) ]
                             ]
+                        , scanControls model
                         , p [ class "privacy-note" ] [ text "Check-in uses the printed office QR only. The scan happens on your phone, and no camera footage is saved." ]
                         ]
                 , div [ class "scanner-offline-note" ]
@@ -681,6 +683,57 @@ scannerView model =
                     ]
                 ]
             ]
+
+
+scanFrame : Model -> Html Msg
+scanFrame model =
+    div
+        [ class "scan-frame"
+        , classList [ ( "is-armed", model.scanStatus == ScanArmed ) ]
+        , attribute "data-scan-frame" ""
+        , attribute "aria-hidden" "true"
+        ]
+        [ span [ class "scan-corner tl" ] []
+        , span [ class "scan-corner tr" ] []
+        , span [ class "scan-corner bl" ] []
+        , span [ class "scan-corner br" ] []
+        , div [ class "scan-beam" ] []
+        ]
+
+
+scanCaption : Model -> String
+scanCaption model =
+    if model.scanStatus == ScanRequesting then
+        "Waking up the camera…"
+
+    else if model.scanStatus == ScanArmed then
+        "Looking for the pass…"
+
+    else
+        "Fit the whole pass inside the box, then tap Scan"
+
+
+scanControls : Model -> Html Msg
+scanControls model =
+    div [ class "scan-controls" ]
+        [ button
+            [ class "organic-button primary-button compact scan-button"
+            , onClick ArmScan
+            , disabled (model.scanStatus == ScanRequesting)
+            ]
+            [ text
+                (if model.scanStatus == ScanRequesting then
+                    "Starting camera…"
+
+                 else if model.scanStatus == ScanArmed then
+                    "Stop"
+
+                 else
+                    "Scan"
+                )
+            ]
+        , p [ class "scan-hint", attribute "role" "status" ] [ text model.scanMessage ]
+        ]
 
 
 blockedScanner : Model -> Html Msg

@@ -39,10 +39,6 @@ app.ports.clearSession.subscribe(() => {
   localStorage.removeItem('proofstech-attendance-v2')
 })
 
-let scanner = null
-let stopping = false
-let scanRequest = 0
-
 app.ports.saveLocal.subscribe(value => {
   try {
     localStorage.setItem('proofstech-attendance-v2', value)
@@ -51,7 +47,12 @@ app.ports.saveLocal.subscribe(value => {
   }
 })
 
-function waitForElement(id, attempts = 30) {
+let cameraSession = null
+let scanRequest = 0
+let scanDecoder = null
+let nativeDetector = null
+
+function waitForElement(id, attempts = 40) {
   return new Promise((resolve, reject) => {
     const look = left => {
       const element = document.getElementById(id)
@@ -63,61 +64,280 @@ function waitForElement(id, attempts = 30) {
   })
 }
 
+function waitForVideo(video, attempts = 60) {
+  return new Promise(resolve => {
+    const look = left => {
+      if (video.videoWidth > 0 && video.videoHeight > 0) return resolve(true)
+      if (left <= 0) return resolve(false)
+      setTimeout(() => look(left - 1), 50)
+    }
+    look(attempts)
+  })
+}
+
+function cameraErrorMessage(error) {
+  const name = (error && error.name) || ''
+  const message = (error && error.message) || 'Camera unavailable'
+  if (name === 'NotAllowedError' || name === 'SecurityError') return 'Camera permission is off. Allow camera access in your browser settings, then scan again.'
+  if (name === 'NotFoundError' || name === 'OverconstrainedError') return 'This device has no usable camera. Open Attendance on a phone, then scan.'
+  if (name === 'NotReadableError' || name === 'AbortError') return 'Another app is using the camera. Close it, then try again.'
+  return message
+}
+
+async function teardownCamera() {
+  const session = cameraSession
+  cameraSession = null
+  if (!session) return
+  session.armed = false
+  clearTimeout(session.tick)
+  clearTimeout(session.deadline)
+  try {
+    session.stream.getTracks().forEach(track => track.stop())
+  } catch (_) {}
+  try {
+    session.video.pause()
+    session.video.srcObject = null
+    session.video.remove()
+  } catch (_) {}
+}
+
+function ensureDecoderHolder() {
+  let holder = document.getElementById('scan-decoder-holder')
+  if (!holder) {
+    holder = document.createElement('div')
+    holder.id = 'scan-decoder-holder'
+    holder.className = 'scan-decoder-holder'
+    document.body.appendChild(holder)
+  }
+  return holder
+}
+
+async function getNativeDetector() {
+  if (nativeDetector !== null) return nativeDetector
+  try {
+    if (typeof window.BarcodeDetector === 'undefined') {
+      nativeDetector = false
+      return nativeDetector
+    }
+    const formats = (await window.BarcodeDetector.getSupportedFormats?.()) || []
+    if (formats.length && !formats.includes('qr_code')) {
+      nativeDetector = false
+      return nativeDetector
+    }
+    nativeDetector = new window.BarcodeDetector({ formats: ['qr_code'] })
+  } catch (_) {
+    nativeDetector = false
+  }
+  return nativeDetector
+}
+
+function ensureDecoder() {
+  if (scanDecoder) return scanDecoder
+  ensureDecoderHolder()
+  scanDecoder = new Html5Qrcode('scan-decoder-holder', {
+    formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+    verbose: false
+  })
+  return scanDecoder
+}
+
+/** Grab only the pixels inside the on-screen scan box, so a half-visible code cannot decode. */
+function captureScanBox() {
+  const session = cameraSession
+  if (!session) return null
+  const video = session.video
+  if (!video || video.readyState < 2) return null
+  const videoWidth = video.videoWidth
+  const videoHeight = video.videoHeight
+  if (!videoWidth || !videoHeight) return null
+
+  const viewRect = video.getBoundingClientRect()
+  if (!viewRect.width || !viewRect.height) return null
+
+  const scale = Math.max(viewRect.width / videoWidth, viewRect.height / videoHeight)
+  const drawnWidth = videoWidth * scale
+  const drawnHeight = videoHeight * scale
+  const offsetX = (viewRect.width - drawnWidth) / 2
+  const offsetY = (viewRect.height - drawnHeight) / 2
+
+  let sourceX = 0
+  let sourceY = 0
+  let sourceWidth = videoWidth
+  let sourceHeight = videoHeight
+
+  const frame = document.querySelector('[data-scan-frame]')
+  if (frame) {
+    const frameRect = frame.getBoundingClientRect()
+    const inset = frameRect.width * 0.035
+    sourceX = (frameRect.left - viewRect.left + inset - offsetX) / scale
+    sourceY = (frameRect.top - viewRect.top + inset - offsetY) / scale
+    sourceWidth = (frameRect.width - inset * 2) / scale
+    sourceHeight = (frameRect.height - inset * 2) / scale
+  }
+
+  sourceX = Math.max(0, sourceX)
+  sourceY = Math.max(0, sourceY)
+  sourceWidth = Math.min(sourceWidth, videoWidth - sourceX)
+  sourceHeight = Math.min(sourceHeight, videoHeight - sourceY)
+  if (sourceWidth < 60 || sourceHeight < 60) return null
+
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.round(sourceWidth)
+  canvas.height = Math.round(sourceHeight)
+  const context = canvas.getContext('2d', { willReadFrequently: true })
+  if (!context) return null
+  context.drawImage(video, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, canvas.width, canvas.height)
+  return canvas
+}
+
+function canvasToFile(canvas) {
+  return new Promise(resolve => {
+    canvas.toBlob(
+      blob => {
+        if (!blob) return resolve(null)
+        resolve(new File([blob], 'office-pass.jpg', { type: blob.type || 'image/jpeg' }))
+      },
+      'image/jpeg',
+      0.92
+    )
+  })
+}
+
+async function decodeCanvas(canvas) {
+  const detector = await getNativeDetector()
+  if (detector) {
+    try {
+      const codes = await detector.detect(canvas)
+      if (codes && codes.length) {
+        const found = codes[0]
+        const box = found.boundingBox
+        if (box) {
+          const margin = 4
+          const spills =
+            box.x <= margin ||
+            box.y <= margin ||
+            box.x + box.width >= canvas.width - margin ||
+            box.y + box.height >= canvas.height - margin
+          if (spills) return { outside: true }
+        }
+        if (found.rawValue) return { text: found.rawValue }
+      }
+    } catch (_) {}
+    return null
+  }
+
+  const file = await canvasToFile(canvas)
+  if (!file) return null
+  try {
+    const result = await ensureDecoder().scanFileV2(file, false)
+    if (result && result.decodedText) return { text: result.decodedText }
+  } catch (_) {}
+  return null
+}
+
+function stopScanLoop(reason) {
+  const session = cameraSession
+  if (!session) return
+  session.armed = false
+  clearTimeout(session.tick)
+  clearTimeout(session.deadline)
+  if (reason) app.ports.scannerMessage.send(reason)
+}
+
+async function scanTick() {
+  const session = cameraSession
+  if (!session || !session.armed) return
+  const canvas = captureScanBox()
+  if (canvas) {
+    const outcome = await decodeCanvas(canvas)
+    if (!cameraSession || !session.armed) return
+    if (outcome && outcome.outside) {
+      app.ports.scannerMessage.send('outside-frame')
+    } else if (outcome && outcome.text) {
+      stopScanLoop(null)
+      app.ports.scanDecoded.send(outcome.text)
+      return
+    }
+  }
+  session.tick = setTimeout(scanTick, 180)
+}
+
+app.ports.armScanner.subscribe(async () => {
+  const session = cameraSession
+  if (!session) return
+  session.armed = true
+  app.ports.scannerMessage.send('armed')
+  clearTimeout(session.deadline)
+  session.deadline = setTimeout(() => {
+    if (cameraSession === session && session.armed) stopScanLoop('scan-timeout')
+  }, 25000)
+  scanTick()
+})
+
+app.ports.disarmScanner.subscribe(() => {
+  stopScanLoop('paused')
+})
+
 app.ports.startScanner.subscribe(async () => {
   const request = ++scanRequest
   try {
     if (!window.isSecureContext) throw new Error('Camera access needs HTTPS')
-    if (!window.Html5Qrcode) throw new Error('The scanner library did not load. Reload while online.')
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      throw new Error('This browser cannot open the camera. Use Safari on iPhone or Chrome on Android.')
+    }
     // The overlay is rendered by Elm after this port fires, so wait for its camera surface.
     await waitForElement('camera-surface')
     if (request !== scanRequest) return
-    if (scanner) await scanner.clear()
-    scanner = new Html5Qrcode('camera-surface', {
-      formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
-      verbose: false
+
+    await teardownCamera()
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: false,
+      video: {
+        facingMode: { ideal: 'environment' },
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
+      }
     })
-    await scanner.start(
-      { facingMode: 'environment' },
-      {
-        fps: 10,
-        qrbox: (width, height) => {
-          const edge = Math.floor(Math.min(width, height) * 0.72)
-          return { width: edge, height: edge }
-        }
-      },
-      decoded => {
-        if (!stopping) {
-          stopping = true
-          app.ports.scanDecoded.send(decoded)
-        }
-      },
-      () => {}
-    )
     if (request !== scanRequest) {
-      try {
-        if (scanner && scanner.isScanning) await scanner.stop()
-        if (scanner) await scanner.clear()
-      } catch (_) {}
-      scanner = null
+      stream.getTracks().forEach(track => track.stop())
       return
     }
-    stopping = false
+
+    const track = stream.getVideoTracks()[0]
+    if (track && track.applyConstraints) {
+      try {
+        await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] })
+      } catch (_) {}
+    }
+
+    const surface = document.getElementById('camera-surface')
+    const video = document.createElement('video')
+    video.setAttribute('playsinline', 'true')
+    video.setAttribute('autoplay', 'true')
+    video.muted = true
+    video.srcObject = stream
+    surface.innerHTML = ''
+    surface.appendChild(video)
+    try {
+      await video.play()
+    } catch (_) {}
+    await waitForVideo(video)
+    if (request !== scanRequest) {
+      stream.getTracks().forEach(t => t.stop())
+      return
+    }
+
+    cameraSession = { stream, video, armed: false, tick: null, deadline: null, request }
+    getNativeDetector()
     app.ports.scannerMessage.send('ready')
   } catch (error) {
-    if (request === scanRequest) {
-      app.ports.scannerMessage.send(error && error.message ? error.message : 'Camera unavailable')
-    }
+    if (request === scanRequest) app.ports.scannerMessage.send(cameraErrorMessage(error))
   }
 })
 
 app.ports.stopScanner.subscribe(async () => {
   scanRequest += 1
-  stopping = true
-  try {
-    if (scanner && scanner.isScanning) await scanner.stop()
-    if (scanner) await scanner.clear()
-  } catch (_) {}
-  scanner = null
+  await teardownCamera()
 })
 
 app.ports.downloadQr.subscribe(async () => {

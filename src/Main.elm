@@ -19,6 +19,12 @@ port saveLocal : String -> Cmd msg
 port startScanner : () -> Cmd msg
 
 
+port armScanner : () -> Cmd msg
+
+
+port disarmScanner : () -> Cmd msg
+
+
 port stopScanner : () -> Cmd msg
 
 
@@ -233,13 +239,45 @@ updateCore msg model =
             , startScanner ()
             )
 
+        ArmScan ->
+            if model.scanStatus == ScanArmed then
+                ( { model | scanStatus = ScanActive, scanMessage = "" }, disarmScanner () )
+
+            else if model.scanStatus == ScanActive then
+                ( { model | scanStatus = ScanArmed, scanMessage = "" }, armScanner () )
+
+            else
+                ( model, Cmd.none )
+
         CloseScanner ->
             ( { model | scanStatus = ScanClosed, scanMessage = "" }, stopScanner () )
 
         ScannerMessage message ->
             case message of
                 "ready" ->
+                    ( { model | scanStatus = ScanActive, scanMessage = "" }, Cmd.none )
+
+                "armed" ->
+                    ( { model | scanStatus = ScanArmed }, Cmd.none )
+
+                "paused" ->
                     ( { model | scanStatus = ScanActive }, Cmd.none )
+
+                "outside-frame" ->
+                    ( { model
+                        | scanStatus = ScanArmed
+                        , scanMessage = "Almost — the pass has to sit completely inside the box."
+                      }
+                    , Cmd.none
+                    )
+
+                "scan-timeout" ->
+                    ( { model
+                        | scanStatus = ScanActive
+                        , scanMessage = "Nothing scanned yet. Fit the whole pass inside the box, then tap Scan."
+                      }
+                    , Cmd.none
+                    )
 
                 "download-error" ->
                     ( { model | toast = Just (Toast "The QR could not download" "Reconnect once, then try again.") }, Cmd.none )
@@ -252,7 +290,11 @@ updateCore msg model =
 
         ScanDecoded value ->
             if validOfficeCode model value then
-                registerAttendance { model | scanStatus = ScanClosed }
+                let
+                    ( nextModel, nextCommand ) =
+                        registerAttendance { model | scanStatus = ScanClosed, scanMessage = "" }
+                in
+                ( nextModel, Cmd.batch [ nextCommand, stopScanner () ] )
 
             else
                 let

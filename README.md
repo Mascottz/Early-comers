@@ -134,6 +134,18 @@ Staff portraits live in `public/staff/` and are mapped by nickname in `src/Art.e
 
 After the first connected visit, the interface and saved records work offline. Camera scanning requires permission. Staff check-in is QR only; if camera access is denied, allow it in browser settings and scan the printed office QR again.
 
+### Scanning at the door
+
+Opening **Scan** starts a live camera preview with a square box in the middle. Nothing is read until you press **Scan** — the preview alone never checks anyone in.
+
+When you press Scan, the app captures only the pixels inside the box and tries to decode them:
+
+- If the pass sits completely inside the box, the check-in is recorded and the camera closes.
+- If part of the pass is outside the box, the code is cut off and cannot decode, so the app says so and keeps looking. Move the phone back until the whole code fits, then tap Scan again.
+- Press **Stop** to cancel, or close the panel.
+
+On browsers with the native `BarcodeDetector` API (Android Chrome) the bounding box is also checked directly; elsewhere `html5-qrcode` decodes the cropped frame, so a half-visible code still fails.
+
 ## Install video
 
 `video/` is a [Remotion](https://remotion.dev) project that renders a 35-second 3D explainer showing how to install the app on iPhone (Safari → Share → Add to Home Screen) and Android (Chrome → ⋮ → Add to Home screen).

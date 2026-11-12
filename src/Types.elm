@@ -22,6 +22,7 @@ type ScanStatus
     = ScanClosed
     | ScanRequesting
     | ScanActive
+    | ScanArmed
     | ScanBlocked
 
 
@@ -151,6 +152,7 @@ type Msg
     | SetZone Time.Zone
     | Navigate Page
     | OpenScanner
+    | ArmScan
     | CloseScanner
     | ScannerMessage String
     | ScanDecoded String
