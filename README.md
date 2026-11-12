@@ -146,6 +146,8 @@ When you press Scan, the app captures only the pixels inside the box and tries t
 
 On browsers with the native `BarcodeDetector` API (Android Chrome) the bounding box is also checked directly; elsewhere `html5-qrcode` decodes the cropped frame, so a half-visible code still fails.
 
+On a short iPhone the scanner panel scrolls and the **Scan** button is pinned to the bottom of the panel, so it is reachable even when the preview fills the screen. If the camera cannot open at all, the panel still shows a **Scan** button above the explanation, so the control is never missing.
+
 The scanner never sits silent: the button stays tappable while the camera wakes up, permission and camera errors are shown in plain words, and if the camera has not started within six seconds the panel says so and offers **Try the camera again**.
 
 ## Install video
@@ -175,9 +177,23 @@ Anyone who arrives after the grace period wears a **Late** tag for that whole da
 
 ## Staying up to date
 
-The app refreshes itself every **15 seconds** while it is signed in and online, and immediately whenever it comes back to the foreground or regains a connection, so a check-in on someone else's phone shows up on the wall without a reload. The connection line at the top shows the age of the last successful sync (`updated 12s ago`). Check-ins made offline are pushed as soon as it refreshes.
+The app refreshes itself every **10 seconds** while it is signed in and online, and immediately whenever it comes back to the foreground or regains a connection, so a check-in on someone else's phone shows up on the wall without a reload. The connection line at the top shows the age of the last successful sync (`updated 12s ago`). Check-ins made offline are pushed as soon as it refreshes.
+
+iPhone and iPad keep a backgrounded app frozen and can restore it from the back/forward cache without a reload, so the bridge also nudges Elm on `visibilitychange`, `pageshow` and `focus`; the app refetches the moment it comes forward.
 
 An installed attendance app on iPhone has no pull-to-refresh — the gesture belongs to Safari, not to us — so there is an explicit control instead: **tap the connection bar** at the top of any screen, or **Profile → Refresh now**. While the fetch is in flight the bar reads *Refreshing the office records…* with a spinning ring, and it settles back to *updated just now*. Tapping it while offline shows a toast and keeps everything saved. If a refresh cannot finish within nine seconds you get a toast saying nothing was lost, and the background refresh keeps going.
+
+## Records that outlive a season
+
+Every check-in is written to Supabase (`attendance_entries`, one row per person per day, plus `staff_profiles` for the team). The app never deletes rows — a record written in 2026 is still there in 2028.
+
+PostgREST returns at most 1000 rows per request by default, so the app does not try to hold all of history in memory. Instead:
+
+- **Jump to a day** on the Daily wall — the date field (or the `‹` `›` arrows) loads that exact day from Supabase, however old it is.
+- **Export month CSV** — exports the whole month that contains the day you are looking at, one Supabase query for the month, so a year's records can be collected twelve months at a time.
+- The wall, the team list and the home summary all come from the same rows, so an old day shows the same names, times and Late tags it did on the day.
+
+For a permanent archive, the Supabase dashboard can export the table as CSV at any time, and Postgres backups are on Supabase's paid plans; exporting a month from inside the app is the day-to-day equivalent.
 
 ## Daily office pass
 

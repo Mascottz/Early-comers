@@ -60,6 +60,9 @@ port scannerMessage : (String -> msg) -> Sub msg
 port onlineChanged : (Bool -> msg) -> Sub msg
 
 
+port appActive : (() -> msg) -> Sub msg
+
+
 port linkCopied : (Bool -> msg) -> Sub msg
 
 
@@ -580,7 +583,38 @@ updateCore msg model =
                     ( { model | toast = Just (Toast "Saved on this phone" "The office wall will update when your connection returns.") }, Cmd.none )
 
         SelectDate day ->
-            ( { model | selectedDate = day }, Cmd.none )
+            ( { model | selectedDate = day }, loadDay model day )
+
+        GotDayEntries day result ->
+            case result of
+                Ok entries ->
+                    ( { model | entries = unionEntries entries model.entries }, Cmd.none )
+
+                Err _ ->
+                    ( { model
+                        | toast =
+                            Just
+                                (Toast ("Could not load " ++ day)
+                                    "Check the connection, then tap that date again."
+                                )
+                      }
+                    , Cmd.none
+                    )
+
+        GotMonthEntries result ->
+            case result of
+                Ok entries ->
+                    ( model, exportCsv (attendanceCsvFrom model entries) )
+
+                Err _ ->
+                    ( { model
+                        | toast = Just (Toast "Could not prepare the month export" "Check the connection and try again.")
+                      }
+                    , Cmd.none
+                    )
+
+        AppActive ->
+            autoRefresh model
 
         ToggleInstall ->
             ( { model | showInstall = not model.showInstall }, Cmd.none )
@@ -721,7 +755,16 @@ updateCore msg model =
             ( model, printQr () )
 
         ExportRecords ->
-            ( model, exportCsv (attendanceCsv model) )
+            case ( model.supabase, model.session ) of
+                ( Just cloud, Just session ) ->
+                    if model.online then
+                        ( model, Supabase.getEntriesForMonth cloud session model.selectedDate )
+
+                    else
+                        ( model, exportCsv (attendanceCsv model) )
+
+                _ ->
+                    ( model, exportCsv (attendanceCsv model) )
 
         ClearToast ->
             ( { model | toast = Nothing }, Cmd.none )
@@ -786,6 +829,11 @@ registerAttendance model =
 
 attendanceCsv : Model -> String
 attendanceCsv model =
+    attendanceCsvFrom model model.entries
+
+
+attendanceCsvFrom : Model -> List Entry -> String
+attendanceCsvFrom model entries =
     let
         row entry =
             let
@@ -814,7 +862,7 @@ attendanceCsv model =
             "\"" ++ String.replace "\"" "\"\"" value ++ "\""
     in
     "Name,Role,Date,Time,Source,Status,Fine (NGN)\n"
-        ++ (model.entries
+        ++ (entries
                 |> List.sortBy .timestamp
                 |> List.map (\entry -> String.join "," (List.map escape (row entry)))
                 |> String.join "\n"
@@ -837,6 +885,20 @@ failedRefresh model =
 
     else
         model
+
+
+loadDay : Model -> String -> Cmd Msg
+loadDay model day =
+    if model.authStatus == Authenticated && model.online then
+        case ( model.supabase, model.session ) of
+            ( Just cloud, Just session ) ->
+                Supabase.getEntriesForDate cloud session day
+
+            _ ->
+                Cmd.none
+
+    else
+        Cmd.none
 
 
 dataFetch : Model -> Cmd Msg
@@ -980,6 +1042,15 @@ friendlyCameraError message =
         "The camera is unavailable right now. Try again in a moment."
 
 
+unionEntries : List Entry -> List Entry -> List Entry
+unionEntries fresh existing =
+    let
+        freshIds =
+            List.map .id fresh
+    in
+    fresh ++ List.filter (\entry -> not (List.member entry.id freshIds)) existing
+
+
 mergeEntries : List Entry -> List Entry -> List Entry
 mergeEntries remote local =
     let
@@ -996,8 +1067,9 @@ subscriptions : Model -> Sub Msg
 subscriptions _ =
     Sub.batch
         [ Time.every 1000 Tick
-        , Time.every 15000 (\_ -> AutoRefresh)
+        , Time.every 10000 (\_ -> AutoRefresh)
         , Browser.Events.onVisibilityChange (\visibility -> AppVisible (visibility == Browser.Events.Visible))
+        , appActive (\_ -> AppActive)
         , scanDecoded ScanDecoded
         , scannerMessage ScannerMessage
         , onlineChanged OnlineChanged
