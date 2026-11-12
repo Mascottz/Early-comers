@@ -129,6 +129,13 @@ em{font-weight:600;color:var(--orange);font-style:normal}
 .entry-source small{font-size:9px;color:var(--ink-soft)}
 .timing-note{font-size:9px;color:#5e7e57}
 .timing-note.late{color:var(--orange-dark)}
+.entry-name-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.late-tag{display:inline-flex;align-items:center;gap:5px;padding:2px 8px 3px;font-size:8px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#a2432a;background:rgba(238,120,79,.22);border:1px solid rgba(202,89,57,.45);border-radius:99px;transform:rotate(-3deg);white-space:nowrap;line-height:1.4}
+.late-tag::before{content:"";width:4px;height:4px;border-radius:50%;background:#ca5939;flex:none}
+.team-arrival .late-tag{align-self:flex-end;transform:rotate(0)}
+.time-caption .late-tag{margin-left:8px;color:#ffd9c9;background:rgba(238,120,79,.3);border-color:rgba(238,120,79,.65);transform:rotate(0)}
+.time-caption .late-tag::before{background:#ffb79b}
+.sync-stamp{color:#a9c994;text-transform:none;letter-spacing:.02em;font-size:9px;font-weight:400}
 .entry-time{font-family:Bricolage,sans-serif;font-size:22px;text-align:right;letter-spacing:-.04em;font-variant-numeric:tabular-nums}
 .wall-preview>.underlined-action{margin-top:18px}
 .day-summary{border-left:1px solid var(--line);padding-left:42px;position:relative}
@@ -143,6 +150,13 @@ em{font-weight:600;color:var(--orange);font-style:normal}
 .stat-line span{color:var(--ink-soft)}
 .stat-line strong{font-weight:500;font-size:11px}
 .summary-footnote{font-size:10px;color:var(--ink-soft);margin:20px 0 0;line-height:1.7}
+.wall-late-block{margin:26px 0 0;border-top:1px solid var(--line);padding-top:18px}
+.wall-late-block .eyebrow{margin-bottom:12px}
+.wall-late-none{font-size:11px;color:var(--ink-soft);margin:0 0 12px}
+.wall-late-people{display:flex;flex-direction:column;gap:7px;margin-bottom:14px}
+.wall-late-person{display:flex;align-items:baseline;gap:9px;font-size:11px;color:var(--ink)}
+.wall-late-person::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--orange);flex:none;transform:translateY(-2px)}
+.wall-late-time{font-family:Bricolage,sans-serif;font-size:12px;color:var(--orange-dark);font-variant-numeric:tabular-nums}
 .wall-fines{font-size:10px;color:var(--orange-dark);margin:12px 0 0;letter-spacing:.03em}
 
 .page-title-row{display:flex;justify-content:space-between;align-items:center;gap:35px;padding:60px 0 38px}

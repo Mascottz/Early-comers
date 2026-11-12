@@ -2,6 +2,7 @@ port module Main exposing (main)
 
 import Api
 import Browser
+import Browser.Events
 import Date
 import Demo
 import Http
@@ -129,6 +130,7 @@ init flags =
             , showAuthPassword = False
             , showAuthPin = False
             , refreshing = False
+            , lastSync = 0
             , appOrigin = flags.origin
             , showInviteLink = False
             , inviteLink = ""
@@ -211,15 +213,8 @@ updateCore msg model =
                         _ ->
                             Cmd.none
 
-                wallCommand =
-                    if model.online && model.authStatus == Authenticated && modBy 30 (Time.posixToMillis posix // 1000) == 0 then
-                        cloudFetch model
-
-                    else
-                        Cmd.none
-
                 command =
-                    Cmd.batch [ refreshCommand, wallCommand ]
+                    refreshCommand
             in
             ( { model
                 | now = posix
@@ -228,6 +223,16 @@ updateCore msg model =
               }
             , command
             )
+
+        AutoRefresh ->
+            autoRefresh model
+
+        AppVisible visible ->
+            if visible then
+                autoRefresh model
+
+            else
+                ( model, Cmd.none )
 
         SetZone zone ->
             ( { model | zone = zone }, Cmd.none )
@@ -434,7 +439,7 @@ updateCore msg model =
         GotCloudWorkers result ->
             case result of
                 Ok workers ->
-                    ( { model | workers = workers, serverReady = True }, Cmd.none )
+                    ( { model | workers = workers, serverReady = True, lastSync = Time.posixToMillis model.now }, Cmd.none )
 
                 Err _ ->
                     ( { model | serverReady = False }, Cmd.none )
@@ -449,7 +454,9 @@ updateCore msg model =
                         updated =
                             { model | entries = merged }
                     in
-                    ( updated, Cmd.batch <| List.map (cloudCheckIn updated) <| pendingEntries updated )
+                    ( { updated | lastSync = Time.posixToMillis model.now }
+                    , Cmd.batch <| List.map (cloudCheckIn updated) <| pendingEntries updated
+                    )
 
                 Err _ ->
                     ( model, Cmd.none )
@@ -513,6 +520,7 @@ updateCore msg model =
                                 , entries = merged
                                 , officeCode = state.officeCode
                                 , serverReady = True
+                                , lastSync = Time.posixToMillis model.now
                             }
                     in
                     ( nextModel, Cmd.batch <| List.map Api.checkIn <| pendingEntries nextModel )
@@ -778,6 +786,24 @@ attendanceCsv model =
            )
 
 
+autoRefresh : Model -> ( Model, Cmd Msg )
+autoRefresh model =
+    if model.authStatus == Authenticated && model.online then
+        case model.supabase of
+            Just _ ->
+                ( model, cloudFetch model )
+
+            Nothing ->
+                if model.serverReady then
+                    ( model, Api.getState )
+
+                else
+                    ( model, Cmd.none )
+
+    else
+        ( model, Cmd.none )
+
+
 cloudFetch : Model -> Cmd Msg
 cloudFetch model =
     case ( model.supabase, model.session ) of
@@ -819,6 +845,7 @@ signOut model =
         , role = WorkerView
         , page = Home
         , refreshing = False
+        , lastSync = 0
         , showInviteLink = False
         , inviteLink = ""
         , inviteLinkName = ""
@@ -919,6 +946,8 @@ subscriptions : Model -> Sub Msg
 subscriptions _ =
     Sub.batch
         [ Time.every 1000 Tick
+        , Time.every 15000 (\_ -> AutoRefresh)
+        , Browser.Events.onVisibilityChange (\visibility -> AppVisible (visibility == Browser.Events.Visible))
         , scanDecoded ScanDecoded
         , scannerMessage ScannerMessage
         , onlineChanged OnlineChanged

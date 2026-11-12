@@ -6,6 +6,7 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput, preventDefaultOn)
 import Json.Decode as Decode
+import Time
 import Types exposing (..)
 
 
@@ -174,7 +175,19 @@ connectionLine model =
     if model.online then
         div [ class "connection-line online-line" ]
             [ span [ class "connection-dot" ] []
-            , text (if List.isEmpty (pendingEntries model) then "Connected, everything is in step" else "Connected, syncing your saved time")
+            , text
+                (if List.isEmpty (pendingEntries model) then
+                    "Connected, everything is in step"
+
+                 else
+                    "Connected, syncing your saved time"
+                )
+            , if syncAge model == "" || model.authStatus /= Authenticated then
+                text ""
+
+              else
+                span [ class "sync-stamp" ] [ text (" · " ++ syncAge model) ]
+            
             ]
 
     else
@@ -320,7 +333,19 @@ homeView model =
             , div [ class "arrival-art" ]
                 [ orbitSketch
                 , div [ class "time-blob" ]
-                    [ p [ class "time-caption" ] [ text (if ownEntry == Nothing then "RIGHT HERE, RIGHT NOW" else "YOUR ARRIVAL") ]
+                    [ p [ class "time-caption" ]
+                        [ text (if ownEntry == Nothing then "RIGHT HERE, RIGHT NOW" else "YOUR ARRIVAL")
+                        , case ownEntry of
+                            Just entry ->
+                                if isLate entry then
+                                    lateTag
+
+                                else
+                                    text ""
+
+                            Nothing ->
+                                text ""
+                        ]
                     , div [ class "big-clock" ] [ text (Maybe.map .time ownEntry |> Maybe.withDefault (formatClock model.zone model.now)) ]
                     , div [ class "clock-rule" ] []
                     , p [ class "arrival-note" ]
@@ -434,6 +459,48 @@ dateButton model day =
         ]
 
 
+
+
+
+latePerson : Model -> Entry -> Html Msg
+latePerson model entry =
+    let
+        name =
+            workerById model entry.workerId
+                |> Maybe.map .name
+                |> Maybe.withDefault "Someone"
+    in
+    span [ class "wall-late-person" ]
+        [ span [ class "wall-late-time" ] [ text entry.time ]
+        , text name
+        ]
+
+
+lateTag : Html Msg
+lateTag =
+    span [ class "late-tag", attribute "title" ("Arrived after " ++ lateGrace ++ " — late for the day") ]
+        [ text "Late" ]
+
+
+syncAge : Model -> String
+syncAge model =
+    let
+        seconds =
+            (Time.posixToMillis model.now - model.lastSync) // 1000
+    in
+    if model.lastSync <= 0 then
+        ""
+
+    else if seconds <= 5 then
+        "updated just now"
+
+    else if seconds < 60 then
+        "updated " ++ String.fromInt seconds ++ "s ago"
+
+    else
+        "updated " ++ String.fromInt (seconds // 60) ++ " min ago"
+
+
 entryList : Model -> List Entry -> Html Msg
 entryList model entries =
     if List.isEmpty entries then
@@ -457,7 +524,14 @@ entryRow model entry =
             div [ class (if worker.id == model.currentWorkerId then "entry-row own-entry" else "entry-row") ]
                 [ avatar worker "avatar-medium"
                 , div [ class "entry-person" ]
-                    [ strong [] [ text worker.name ]
+                    [ div [ class "entry-name-row" ]
+                        [ strong [] [ text worker.name ]
+                        , if isLate entry then
+                            lateTag
+
+                          else
+                            text ""
+                        ]
                     , small [] [ text worker.title ]
                     ]
                 , div [ class "entry-source" ]
@@ -516,7 +590,16 @@ wallView model =
                 , strong [ class "oversized-number" ] [ text (String.fromInt workersPresent) ]
                 , h3 [] [ text (if workersPresent == 1 then "person showed up." else "people showed up.") ]
                 , p [] [ text "Not a leaderboard. Just a truthful little record of being here, together." ]
-                , p [ class "wall-fines" ] [ text ("Late fines: " ++ formatNaira (lateFineTotal entries)) ]
+                , div [ class "wall-late-block" ]
+                    [ p [ class "eyebrow" ] [ text "LATE TODAY" ]
+                    , if List.isEmpty (List.filter isLate entries) then
+                        p [ class "wall-late-none" ] [ text ("Nobody yet. Grace ends at " ++ lateGrace ++ ".") ]
+
+                      else
+                        div [ class "wall-late-people" ]
+                            (List.map (latePerson model) (List.filter isLate entries))
+                    , p [ class "wall-fines" ] [ text ("Late fines: " ++ formatNaira (lateFineTotal entries)) ]
+                    ]
                 , div [ class "handwritten-line" ] [ text "Every day has its own shape." ]
                 ]
             ]
@@ -557,6 +640,16 @@ teamMember model worker =
         , div [ class "team-arrival" ]
             [ small [] [ text "TODAY" ]
             , strong [] [ text (Maybe.map .time arrival |> Maybe.withDefault "Not in yet") ]
+            , case arrival of
+                Just entry ->
+                    if isLate entry then
+                        lateTag
+
+                    else
+                        text ""
+
+                Nothing ->
+                    text "" 
             , if model.role == AdminView then
                 button [ class "invite-link-action", onClick (PrepareInviteLink worker) ] [ text "Prepare link" ]
 
@@ -641,7 +734,7 @@ profileView model =
             , div [ class "setting-group small-settings" ]
                 [ div [ class "stat-line" ] [ span [] [ text "Records waiting to sync" ], strong [] [ text (String.fromInt (List.length (pendingEntries model))) ] ]
                 , div [ class "stat-line" ] [ span [] [ text "Storage" ], strong [] [ text "On this device" ] ]
-                , div [ class "stat-line" ] [ span [] [ text "App version" ], strong [] [ text "1.1" ] ]
+                , div [ class "stat-line" ] [ span [] [ text "App version" ], strong [] [ text "1.2" ] ]
                 ]
             , if model.session /= Nothing then
                 button [ class "underlined-action signout-action", onClick SignOut ] [ text "Sign out on this device" ]
